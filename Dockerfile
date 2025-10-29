@@ -1,65 +1,75 @@
-# Dockerfile for LESS to Tailwind Parser Development Environment
-# Multi-stage build with development tools and global dependencies
+FROM node:20-alpine
 
-FROM node:22-alpine as base
-
-# Install system dependencies
-RUN apk add --no-cache \
-    git \
-    curl \
-    bash \
-    vim \
-    nano \
-    openssh-client \
-    ca-certificates \
-    python3 \
-    make \
-    g++
-
-# Set up development environment
+# Set working directory
 WORKDIR /workspace
 
-# Install Claude Code CLI globally
-RUN npm install -g @anthropic-ai/claude-code
+# Install system dependencies for MCPs and development
+RUN apk add --no-cache \
+    git \
+    postgresql-client \
+    python3 \
+    py3-pip \
+    bash \
+    curl \
+    jq \
+    build-essential \
+    python3-dev
 
-# Install useful global npm packages for development
+# Install Node.js global tools
 RUN npm install -g \
+    @anthropic-ai/sdk \
     typescript \
     ts-node \
-    nodemon \
-    eslint \
-    prettier \
-    jest \
-    @types/node \
-    dotenv-cli \
-    npm-check-updates
+    pm2
 
-# Create stage worktree directories
-RUN mkdir -p /workspace/stages
+# Create MCP server directory
+RUN mkdir -p /mcp/servers
 
-# Copy package files
+# Install MCP Servers
+# 1. PostgreSQL MCP Server
+RUN npm install -g @modelcontextprotocol/server-postgres@latest
+
+# 2. Git MCP Server
+RUN npm install -g @modelcontextprotocol/server-git@latest
+
+# 3. Filesystem MCP Server
+RUN npm install -g @modelcontextprotocol/server-filesystem@latest
+
+# 4. Sequential Thinking support (via Claude extensions)
+RUN npm install -g @anthropic-ai/thinking-toolkit@latest || true
+
+# Copy MCP configuration
+COPY .mcp-config.json /root/.mcp-config.json
+COPY mcp-servers.json /mcp/servers.json
+
+# Create initialization script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+# Copy application files
 COPY package*.json ./
-
-# Install project dependencies
 RUN npm ci
+
+# Copy source code
+COPY . .
 
 # Build the project
 RUN npm run build
 
-# Set environment variables
-ENV NODE_ENV=development
-ENV PATH=/workspace/node_modules/.bin:$PATH
+# Expose ports for MCP servers
+EXPOSE 3000 5432 9000-9010
 
-# Default shell
-SHELL ["/bin/bash", "-c"]
+# Set environment variables
+ENV NODE_ENV=production
+ENV MCP_CONFIG_PATH=/root/.mcp-config.json
+ENV WORKSPACE=/workspace
+ENV DATABASE_URL=postgresql://localhost/less_to_tailwind
+ENV PATH="/mcp/bin:${PATH}"
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD npm run build 2>/dev/null && echo "healthy" || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD npm run health || exit 1
 
-# Entry point
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-CMD ["/bin/bash"]
+# Run entrypoint
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["npm", "start"]
