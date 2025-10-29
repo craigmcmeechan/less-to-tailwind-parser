@@ -22,35 +22,22 @@ class Logger {
   }
 
   debug(message: string, data?: unknown): void {
-    if (this.shouldLog(LogLevel.DEBUG)) {
-      console.log(this.formatMessage(LogLevel.DEBUG, message, data));
+    if (this.logLevel === LogLevel.DEBUG) {
+      console.debug(this.formatMessage(LogLevel.DEBUG, message, data));
     }
   }
 
   info(message: string, data?: unknown): void {
-    if (this.shouldLog(LogLevel.INFO)) {
-      console.log(this.formatMessage(LogLevel.INFO, message, data));
-    }
+    console.info(this.formatMessage(LogLevel.INFO, message, data));
   }
 
   warn(message: string, data?: unknown): void {
-    if (this.shouldLog(LogLevel.WARN)) {
-      console.warn(this.formatMessage(LogLevel.WARN, message, data));
-    }
+    console.warn(this.formatMessage(LogLevel.WARN, message, data));
   }
 
   error(message: string, error?: unknown): void {
-    if (this.shouldLog(LogLevel.ERROR)) {
-      const errorStr = error instanceof Error ? error.stack : String(error);
-      console.error(this.formatMessage(LogLevel.ERROR, message, errorStr));
-    }
-  }
-
-  private shouldLog(level: LogLevel): boolean {
-    const levels = Object.values(LogLevel);
-    const currentIndex = levels.indexOf(this.logLevel);
-    const messageIndex = levels.indexOf(level);
-    return messageIndex >= currentIndex;
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error(this.formatMessage(LogLevel.ERROR, message, errorMsg));
   }
 }
 
