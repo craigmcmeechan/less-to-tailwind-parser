@@ -1,128 +1,161 @@
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { logger } from '../utils/logger.js';
 import { DatabaseService } from './databaseService.js';
 
-interface TailwindConfig {
+export interface TailwindConfig {
   theme: {
-    extend: Record<string, unknown>;
+    extend: {
+      colors?: Record<string, string>;
+      spacing?: Record<string, string>;
+      fontSize?: Record<string, string>;
+      fontFamily?: Record<string, string>;
+      [key: string]: Record<string, string> | undefined;
+    };
   };
-  plugins: unknown[];
 }
 
 export class ExportService {
-  constructor(private databaseService: DatabaseService) {}
+  constructor(private dbService: DatabaseService) {}
 
-  async exportToTailwind(): Promise<TailwindConfig> {
+  async convertToTailwind(): Promise<TailwindConfig> {
     try {
-      const outputDir = process.env.OUTPUT_DIR || './output';
-      
-      // Create output directory if it doesn't exist
-      if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir, { recursive: true });
+      const files = await this.dbService.getAllLessFiles();
+      const tailwindConfig: TailwindConfig = {
+        theme: {
+          extend: {},
+        },
+      };
+
+      for (const file of files) {
+        // Extract variables and convert to Tailwind theme config
+        const variables = await this.extractVariablesFromContent(file.content);
+        this.mergeVariablesToConfig(tailwindConfig, variables);
       }
-
-      // Get all LESS files and variables
-      const lessFiles = await this.databaseService.getAllLessFiles();
-      
-      // Build Tailwind configuration from extracted variables
-      const tailwindConfig = await this.buildTailwindConfig(lessFiles);
-
-      // Write configuration file
-      const configPath = path.join(outputDir, 'tailwind.config.js');
-      this.writeTailwindConfig(configPath, tailwindConfig);
-      logger.info(`Tailwind config written to: ${configPath}`);
-
-      // Generate CSS output
-      const cssPath = path.join(outputDir, 'styles.css');
-      const cssContent = await this.generateCss(lessFiles);
-      fs.writeFileSync(cssPath, cssContent);
-      logger.info(`CSS output written to: ${cssPath}`);
 
       return tailwindConfig;
     } catch (error) {
-      logger.error('Error exporting to Tailwind:', error);
+      logger.error('Error converting to Tailwind:', error);
       throw error;
     }
   }
 
-  private async buildTailwindConfig(lessFiles: any[]): Promise<TailwindConfig> {
-    const config: TailwindConfig = {
-      theme: {
-        extend: {},
-      },
-      plugins: [],
-    };
-
-    // Process LESS files to extract theme values
-    for (const file of lessFiles) {
-      const variables = this.extractThemeVariables(file.content);
-      Object.assign(config.theme.extend, variables);
-    }
-
-    return config;
-  }
-
-  private extractThemeVariables(content: string): Record<string, unknown> {
-    const variables: Record<string, unknown> = {};
-
-    // Extract color variables
-    const colorPattern = /@([a-zA-Z0-9_-]*color[a-zA-Z0-9_-]*)\s*:\s*([^;]+);/gi;
+  private async extractVariablesFromContent(content: string): Promise<Map<string, string>> {
+    const variables = new Map<string, string>();
+    const variableRegex = /@([\w-]+)\s*:\s*([^;]+);/g;
     let match;
 
-    while ((match = colorPattern.exec(content)) !== null) {
-      const name = match[1].replace(/@/, '');
-      variables[name] = match[2].trim();
-    }
-
-    // Extract spacing variables
-    const spacingPattern = /@([a-zA-Z0-9_-]*(?:spacing|size|width|height|margin|padding)[a-zA-Z0-9_-]*)\s*:\s*([^;]+);/gi;
-    while ((match = spacingPattern.exec(content)) !== null) {
-      const name = match[1].replace(/@/, '');
-      variables[name] = match[2].trim();
-    }
-
-    // Extract font variables
-    const fontPattern = /@([a-zA-Z0-9_-]*(?:font|text)[a-zA-Z0-9_-]*)\s*:\s*([^;]+);/gi;
-    while ((match = fontPattern.exec(content)) !== null) {
-      const name = match[1].replace(/@/, '');
-      variables[name] = match[2].trim();
+    while ((match = variableRegex.exec(content)) !== null) {
+      const varName = match[1];
+      const varValue = match[2].trim();
+      variables.set(varName, varValue);
     }
 
     return variables;
   }
 
-  private async generateCss(lessFiles: any[]): Promise<string> {
-    let css = '/* Generated from LESS files for Tailwind CSS */\n\n';
+  private mergeVariablesToConfig(config: TailwindConfig, variables: Map<string, string>): void {
+    const colorMap: Record<string, string> = {};
+    const spacingMap: Record<string, string> = {};
+    const fontSizeMap: Record<string, string> = {};
 
-    css += ':root {\n';
-    for (const file of lessFiles) {
-      const variables = this.extractCssVariables(file.content);
-      for (const [name, value] of Object.entries(variables)) {
-        css += `  --${name}: ${value};\n`;
+    for (const [name, value] of variables) {
+      if (
+        name.toLowerCase().includes('color') ||
+        name.toLowerCase().includes('bg') ||
+        name.toLowerCase().includes('text')
+      ) {
+        colorMap[this.camelToKebab(name)] = value;
+      } else if (
+        name.toLowerCase().includes('space') ||
+        name.toLowerCase().includes('padding') ||
+        name.toLowerCase().includes('margin')
+      ) {
+        spacingMap[this.camelToKebab(name)] = value;
+      } else if (name.toLowerCase().includes('size') || name.toLowerCase().includes('font')) {
+        fontSizeMap[this.camelToKebab(name)] = value;
       }
     }
-    css += '}\n';
 
-    return css;
+    if (Object.keys(colorMap).length > 0) {
+      config.theme.extend.colors = { ...config.theme.extend.colors, ...colorMap };
+    }
+    if (Object.keys(spacingMap).length > 0) {
+      config.theme.extend.spacing = { ...config.theme.extend.spacing, ...spacingMap };
+    }
+    if (Object.keys(fontSizeMap).length > 0) {
+      config.theme.extend.fontSize = { ...config.theme.extend.fontSize, ...fontSizeMap };
+    }
   }
 
-  private extractCssVariables(content: string): Record<string, string> {
-    const variables: Record<string, string> = {};
-    const pattern = /@([a-zA-Z0-9_-]+)\s*:\s*([^;]+);/g;
-    let match;
+  private camelToKebab(str: string): string {
+    return str.replace(/([a-z0-9]|(?=[A-Z]))([A-Z])/g, '$1-$2').toLowerCase();
+  }
 
-    while ((match = pattern.exec(content)) !== null) {
-      variables[match[1]] = match[2].trim();
+  async exportToFile(config: TailwindConfig, outputPath: string): Promise<void> {
+    try {
+      const outputDir = path.dirname(outputPath);
+
+      // Ensure output directory exists
+      await fs.mkdir(outputDir, { recursive: true });
+
+      const configContent = this.generateTailwindConfigFile(config);
+      await fs.writeFile(outputPath, configContent, 'utf-8');
+
+      logger.info(`Exported Tailwind configuration to: ${outputPath}`);
+
+      // Also store in database
+      await this.dbService.exportTailwindConfig('main-config', JSON.stringify(config));
+    } catch (error) {
+      logger.error('Error exporting to file:', error);
+      throw error;
+    }
+  }
+
+  private generateTailwindConfigFile(config: TailwindConfig): string {
+    return `/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./src/**/*.{js,jsx,ts,tsx}",
+  ],
+  theme: {
+    extend: {
+${this.stringifyThemeExtend(config.theme.extend)}
+    },
+  },
+  plugins: [],
+}
+`;
+  }
+
+  private stringifyThemeExtend(extend: Record<string, Record<string, string> | undefined>): string {
+    let result = '';
+
+    for (const [key, value] of Object.entries(extend)) {
+      if (value && typeof value === 'object') {
+        result += `      ${key}: {\n`;
+        for (const [k, v] of Object.entries(value)) {
+          result += `        '${k}': '${v}',\n`;
+        }
+        result += '      },\n';
+      }
     }
 
-    return variables;
+    return result;
   }
 
-  private writeTailwindConfig(filePath: string, config: TailwindConfig): void {
-    const configContent = `/** @type {import('tailwindcss').Config} */
-export default ${JSON.stringify(config, null, 2)};
-`;
-    fs.writeFileSync(filePath, configContent);
+  async generateCSS(config: TailwindConfig): Promise<string> {
+    let css = '/* Generated Tailwind CSS from LESS variables */\n\n';
+
+    const colors = config.theme.extend.colors || {};
+    if (Object.keys(colors).length > 0) {
+      css += ':root {\n';
+      for (const [name, value] of Object.entries(colors)) {
+        css += `  --color-${name}: ${value};\n`;
+      }
+      css += '}\n\n';
+    }
+
+    return css;
   }
 }
