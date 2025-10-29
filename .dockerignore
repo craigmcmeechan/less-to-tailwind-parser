@@ -1,0 +1,71 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Node
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+pnpm-lock.yaml
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+.prettierignore
+.eslintignore
+
+# Build artifacts
+dist
+build
+coverage
+.tsbuildinfo
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+docker-entrypoint.sh
+
+# Documentation
+docs
+README.md
+DOCUMENTATION_UPDATES_SUMMARY.md
+
+# Scripts
+scripts
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.circleci
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temporary
+*.tmp
+tmp
+temp
+*.log
+
+# Testing
+**/__tests__
+**/*.test.ts
+**/*.spec.ts
+.jest
+
+# Stage TODO files (generated at runtime)
+STAGE_*_TODO.md
