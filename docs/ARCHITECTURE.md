@@ -1,29 +1,38 @@
-# ARCHITECTURE GUIDE
+# ARCHITECTURE GUIDE (UPDATED FOR PART 2)
 
-This document describes the overall system architecture, module organization, responsibilities, and data flow for the LESS to Tailwind parser.
+This document describes the overall system architecture for both Part 1 (LESS extraction) and Part 2 (HTML to Tailwind conversion).
 
 ## Table of Contents
 
 1. [System Overview](#system-overview)
 2. [Architecture Layers](#architecture-layers)
-3. [Module Responsibilities](#module-responsibilities)
-4. [Data Flow](#data-flow)
-5. [Dependency Map](#dependency-map)
-6. [Key Design Decisions](#key-design-decisions)
+3. [Part 1: LESS Extraction](#part-1-less-extraction)
+4. [Part 2: HTML to Tailwind](#part-2-html-to-tailwind)
+5. [Selector Matching Engine](#selector-matching-engine)
+6. [Module Responsibilities](#module-responsibilities)
+7. [Data Flow](#data-flow)
+8. [Key Design Decisions](#key-design-decisions)
 
 ---
 
 ## System Overview
 
-### High-Level Purpose
+### Two-Part System
 
-The LESS to Tailwind parser is a transformation system that:
+**Part 1 - LESS CSS Extraction (Weeks 1-6)**
+- Scans multiple file system paths for LESS CSS files
+- Parses LESS syntax and hierarchical imports
+- **Extracts CSS selectors and rules** (NEW)
+- Stores hierarchical structure in PostgreSQL
+- Extracts variables, mixins, and theme tokens
+- Exports Tailwind CSS configuration
 
-1. **Scans** multiple file system paths for LESS CSS files
-2. **Parses** LESS syntax and hierarchical imports
-3. **Stores** file data and relationships in PostgreSQL
-4. **Extracts** variables, mixins, and theme information
-5. **Exports** Tailwind CSS-compatible configuration and styles
+**Part 2 - HTML to Tailwind Conversion (Weeks 7-10)**
+- Accepts HTML DOM strings as input
+- Matches HTML elements to extracted LESS CSS rules
+- Applies CSS cascade and specificity rules
+- Maps matched properties to Tailwind CSS classes
+- Outputs HTML with Tailwind class suggestions
 
 ### Technology Stack
 
@@ -31,26 +40,26 @@ The LESS to Tailwind parser is a transformation system that:
 - **Language:** TypeScript (strict mode)
 - **Database:** PostgreSQL with pg driver
 - **LESS Parsing:** less.js library
+- **HTML Parsing:** cheerio (for Part 2)
 - **Testing:** Jest with ts-jest
-- **Linting:** ESLint
-- **Formatting:** Prettier
 
 ---
 
 ## Architecture Layers
 
+### Part 1: LESS Extraction
+
 ```
 ┌─────────────────────────────────────────────────────┐
 │  CLI / Entry Point (src/index.ts)                   │
-│  - Parse command-line arguments                     │
-│  - Initialize services                              │
-│  - Orchestrate pipeline                             │
+│  - Orchestrate Part 1 pipeline                      │
 └──────────────────┬──────────────────────────────────┘
                    │
 ┌──────────────────▼──────────────────────────────────┐
 │  Service Layer (src/services/)                      │
 │  - LessService: File scanning & LESS processing     │
 │  - DatabaseService: Data persistence                │
+│  - RuleExtractionService: CSS rule extraction ⭐    │
 │  - ExportService: Tailwind config generation        │
 └──────────────────┬──────────────────────────────────┘
                    │
@@ -69,455 +78,410 @@ The LESS to Tailwind parser is a transformation system that:
 └─────────────────────────────────────────────────────┘
 ```
 
----
+### Part 2: HTML to Tailwind
 
-## Module Responsibilities
-
-### Entry Point: `src/index.ts`
-
-**Responsibility:** Orchestrate the entire pipeline
-
-**Exports:** Main execution function
-
-**Key Behaviors:**
-- Load environment variables
-- Initialize database connection
-- Create service instances
-- Execute processing stages in sequence
-- Handle errors and cleanup
-
-**NOT responsible for:**
-- Business logic for any specific stage
-- Direct database operations
-- File I/O (except configuration)
-
----
-
-### Service Layer
-
-#### `services/lessService.ts`
-
-**Responsibility:** File discovery and LESS processing
-
-**Public Methods:**
-- `scanLessFiles(paths: string[]): Promise<string[]>` - Find all LESS files
-- `processLessFile(filePath: string): Promise<void>` - Parse and store single file
-- `resolveImportHierarchy(): Promise<void>` - Build import graph
-- `extractVariablesAndMixins(): Promise<void>` - Extract theme data
-
-**Dependencies:**
-- `DatabaseService` - Store file data
-- `logger` - Logging
-
-**NOT responsible for:**
-- Database schema or direct SQL
-- Tailwind config generation
+```
+┌─────────────────────────────────────────────────────┐
+│  CLI / Entry Point (src/part2/index.ts) ⭐           │
+│  - Accept HTML input                                │
+│  - Orchestrate Part 2 pipeline                      │
+└──────────────────┬──────────────────────────────────┘
+                   │
+┌──────────────────▼──────────────────────────────────┐
+│  Conversion Layer (src/part2/services/) ⭐           │
+│  - HtmlParserService: Parse DOM                     │
+│  - SelectorMatchingEngine: Match rules ⭐⭐          │
+│  - CascadeResolver: Apply CSS cascade               │
+│  - TailwindMapper: Map to Tailwind classes          │
+└──────────────────┬──────────────────────────────────┘
+                   │
+┌──────────────────▼──────────────────────────────────┐
+│  Part 1 Infrastructure (reused)                     │
+│  - DatabaseService (read-only queries)              │
+│  - PostgreSQL (less_rules, less_variables)          │
+└─────────────────────────────────────────────────────┘
+```
 
 ---
 
-#### `services/databaseService.ts`
+## Part 1: LESS Extraction
 
-**Responsibility:** All database interactions
+### Stages 1-3: Foundation & Imports (Unchanged)
 
-**Public Methods:**
-- `storeLessFile(data): Promise<number>` - Insert/upsert file
-- `resolveImports(): Promise<void>` - Link import relationships
-- `extractVariables(): Promise<void>` - Parse and store variables
-- `getFileById(id): Promise<File>`
-- `getAllLessFiles(): Promise<File[]>`
-- `getImportHierarchy(fileId): Promise<Import[]>`
+See original ARCHITECTURE.md sections.
 
-**Dependencies:**
-- PostgreSQL `Client` from pg
-- `logger` - Logging
+### Stage 4: Rule & Selector Extraction ⭐ NEW
 
-**NOT responsible for:**
-- File system operations
-- LESS parsing
-- Configuration generation
+**Responsibility:** Extract CSS selectors and rule blocks from LESS files
 
----
-
-#### `services/exportService.ts`
-
-**Responsibility:** Generate Tailwind-compatible output
-
-**Public Methods:**
-- `exportToTailwind(): Promise<TailwindConfig>` - Generate complete export
-
-**Inputs:**
-- File data from database
-- Extracted variables and theme data
+**New Components:**
+- `RuleExtractionService` - Parses CSS rules, flattens nesting
+- `SelectorIndexer` - Builds queryable selector index
+- `SpecificityCalculator` - Computes CSS specificity scores
 
 **Outputs:**
-- `tailwind.config.js` file
-- `styles.css` CSS variables file
-- Tailwind theme configuration object
-
-**NOT responsible for:**
-- Parsing LESS syntax
-- Database queries (uses DatabaseService)
+- `less_rules` table populated with selectors and properties
+- Indexed selectors ready for Part 2 matching
 
 ---
 
-### Data Layer
+## Part 2: HTML to Tailwind
 
-#### `database/connection.ts`
+### Core Components
 
-**Responsibility:** PostgreSQL connection lifecycle
+#### 1. HTML Parser Service
 
-**Exports:**
-- `initializeDatabase(): Promise<Client>` - Connect and init schema
-- Database configuration
+**Responsibility:** Parse HTML and extract element information
 
-**Behaviors:**
-- Establish connection with retry logic
-- Run schema migrations
-- Handle connection errors
+**Public Methods:**
+```typescript
+parseHtml(htmlString: string): ParsedElement[]
+```
 
----
-
-#### `database/schema.sql`
-
-**Responsibility:** Database schema definition
-
-**Defines:**
-- `less_files` table - LESS files and metadata
-- `less_imports` table - File dependencies
-- `less_variables` table - Extracted variables/mixins
-- `tailwind_exports` table - Generated output tracking
-- `parse_history` table - Execution audit
-- Indexes, triggers, ENUMs
+**Returns:**
+```typescript
+interface ParsedElement {
+  id: string;
+  tag: string;
+  classes: string[];
+  id: string;
+  attributes: Record<string, string>;
+  children: ParsedElement[];
+  computedStyle?: Record<string, string>;
+}
+```
 
 ---
 
-#### `models/`
+#### 2. Selector Matching Engine ⭐⭐ CRITICAL
 
-**Responsibility:** Type safety and data contracts
+**Responsibility:** Match HTML elements to LESS CSS selectors
 
-**Contains:**
-- `LessFile` interface - File data structure
-- `LessImport` interface - Import relationship
-- `LessVariable` interface - Variable definition
-- Type aliases for status, import types, etc.
+**Core Logic:**
+1. Index all LESS selectors from database
+2. For each HTML element, find matching selectors
+3. Calculate specificity for each match
+4. Sort by specificity (highest wins)
+
+**Public Methods:**
+```typescript
+indexSelectors(lessRules: LessRule[]): SelectorIndex
+
+matchElement(element: ParsedElement): MatchedRule[]
+  → Returns rules sorted by specificity
+
+calculateSpecificity(selector: string): SpecificityScore
+  → (idCount, classCount, elementCount)
+```
+
+**Selector Types Supported:**
+- Element selectors: `div`, `h1`
+- Class selectors: `.asc-about-header`
+- ID selectors: `#main`
+- Descendant: `.parent .child`
+- Child: `.parent > .child`
+- Attribute: `[type="text"]`
+- Pseudo-classes: `:hover` (flagged for manual override)
 
 ---
 
-### Utilities & Infrastructure
+#### 3. Cascade Resolver
 
-#### `utils/logger.ts`
+**Responsibility:** Apply CSS cascade rules and resolve conflicts
 
-**Responsibility:** Centralized structured logging
+**Cascade Rules:**
+1. Later rules override earlier rules (same specificity)
+2. Higher specificity wins
+3. `!important` highest priority
+4. Inline styles override all
 
-**Features:**
-- Four log levels: DEBUG, INFO, WARN, ERROR
-- Timestamp and level prefixes
-- Environment-based level filtering
-- Context data support
-
-**Usage:** `import { logger } from './utils/logger.js'`
+**Output:**
+```typescript
+interface ComputedStyle {
+  property: string;
+  value: string;
+  source: 'inherited' | 'cascade' | 'inline' | 'important';
+  specificity: SpecificityScore;
+  ruleId: number; // Reference to less_rules
+}
+```
 
 ---
 
-#### `errors/customError.ts` and application-specific errors
+#### 4. Tailwind Mapper
 
-**Responsibility:** Typed error handling
+**Responsibility:** Convert CSS properties to Tailwind classes
 
-**Provides:**
-- Base `CustomError` class
-- Specific error types: `FileNotFoundError`, `DatabaseConnectionError`, etc.
-- Error codes and HTTP status codes
-- Error context preservation
+**Strategy:**
+- Query `theme_tokens` table (from Part 1) for value mappings
+- Match CSS property→value to Tailwind class equivalents
+- Generate confidence score for each mapping
+- Provide fallback utility classes if exact match unavailable
+
+**Examples:**
+```
+CSS: color: #3498db        → Tailwind: text-blue-500 (confidence: 0.95)
+CSS: font-weight: bold     → Tailwind: font-bold (confidence: 1.0)
+CSS: margin: 30px          → Tailwind: m-8 (confidence: 0.80)
+```
+
+---
+
+## Selector Matching Engine: Detailed Design
+
+### Data Structure
+
+```typescript
+interface SelectorIndex {
+  // Simple selectors (exact match)
+  simpleSelectors: Map<string, LessRule[]>;
+  
+  // Complex selectors (regex match)
+  complexSelectors: {
+    pattern: RegExp;
+    rule: LessRule;
+    specificity: SpecificityScore;
+  }[];
+  
+  // Class → selectors mapping (fast lookup)
+  classMappings: Map<string, LessRule[]>;
+  
+  // ID → selectors mapping
+  idMappings: Map<string, LessRule[]>;
+}
+```
+
+### Matching Algorithm
+
+```
+FOR each HTML element:
+  1. Collect matching selectors:
+     a) Direct class match (e.g., .asc-about-header)
+     b) Descendant matches (parent has required class)
+     c) ID match
+     d) Element tag match
+  
+  2. For each matching selector:
+     - Calculate specificity
+     - Get all properties from rule
+     - Mark as "applicable"
+  
+  3. Sort applicable rules by specificity (desc)
+  
+  4. Apply cascade (resolve conflicts)
+  
+  5. Return final computed style
+```
+
+### Specificity Score
+
+```typescript
+interface SpecificityScore {
+  idCount: number;      // #id selectors
+  classCount: number;   // .class, [attr] selectors
+  elementCount: number; // element selectors
+  
+  // Calculated: (idCount * 100) + (classCount * 10) + elementCount
+  totalScore(): number
+}
+
+// Example: .parent .asc-about-header
+// Result: (0, 2, 1) = 0*100 + 2*10 + 1 = 21
+```
 
 ---
 
 ## Data Flow
 
-### Complete Pipeline Flow
+### Part 1: Complete LESS Extraction
 
 ```
-┌─────────────────────────────────────┐
-│ 1. Initialization                   │
-│ - Load .env                         │
-│ - Connect to PostgreSQL             │
-│ - Create service instances          │
-└────────────┬────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────┐
-│ 2. File Discovery (LessService)     │
-│ - Read LESS_SCAN_PATHS from env     │
-│ - Recursively find *.less files     │
-│ - Collect absolute paths            │
-└────────────┬────────────────────────┘
-             │ → List of file paths
-             ▼
-┌─────────────────────────────────────┐
-│ 3. File Storage (DatabaseService)   │
-│ - Read each file content            │
-│ - Calculate SHA256 checksum         │
-│ - Store in less_files table         │
-│ - Mark as 'completed'               │
-└────────────┬────────────────────────┘
-             │ → File IDs in database
-             ▼
-┌─────────────────────────────────────┐
-│ 4. Import Resolution                │
-│ - Extract @import statements        │
-│ - Create parent→child relationships │
-│ - Link to actual files              │
-│ - Detect circular imports           │
-└────────────┬────────────────────────┘
-             │ → Import hierarchy mapped
-             ▼
-┌─────────────────────────────────────┐
-│ 5. Variable Extraction              │
-│ - Parse @variables from LESS        │
-│ - Extract .mixin definitions        │
-│ - Link to source files              │
-│ - Categorize by theme (colors, etc) │
-└────────────┬────────────────────────┘
-             │ → Variables in database
-             ▼
-┌─────────────────────────────────────┐
-│ 6. Tailwind Export (ExportService)  │
-│ - Query all variables               │
-│ - Map to Tailwind theme structure   │
-│ - Generate tailwind.config.js       │
-│ - Generate CSS variables file       │
-└────────────┬────────────────────────┘
-             │ → Config & CSS files
-             ▼
-┌─────────────────────────────────────┐
-│ 7. Reporting & Cleanup              │
-│ - Log completion statistics         │
-│ - Close database connection         │
-│ - Return success/failure status     │
-└─────────────────────────────────────┘
-```
-
-### Data Transformation Through Pipeline
-
-```
-File System                  
-    ↓ (paths)
+LESS Files
+    ↓ (Stage 2: Scan)
 LessService.scanLessFiles()
-    ↓ (file paths)
+    ↓ (discovered paths)
 LessService.processLessFile()
     ↓ (file content)
 DatabaseService.storeLessFile()
-    ↓ (stored as less_files row)
+    ↓ (stored as less_files)
 LessService.resolveImportHierarchy()
-    ↓ (import graph built)
+    ↓ (import graph)
 DatabaseService.resolveImports()
-    ↓ (imports linked to files)
+    ↓ (imports linked)
+→→→ NEW: RuleExtractionService.extractRules() ⭐
+    ↓ (CSS rules + selectors)
+DatabaseService.storeRules()
+    ↓ (stored as less_rules + selectors indexed)
 LessService.extractVariablesAndMixins()
-    ↓ (variable definitions)
+    ↓ (variables)
 DatabaseService.extractVariables()
-    ↓ (variables in database)
+    ↓ (stored as less_variables)
 ExportService.exportToTailwind()
-    ↓ (mapped to Tailwind structure)
-File System (config + CSS)
+    ↓ (theme tokens)
+File System (tailwind.config.js)
+```
+
+### Part 2: HTML to Tailwind
+
+```
+HTML DOM String
+    ↓ (Stage 8: Parse)
+HtmlParserService.parseHtml()
+    ↓ (ParsedElements[])
+→→→ SelectorMatchingEngine.indexSelectors() ⭐⭐
+    ↓ (query less_rules from DB)
+SelectorIndex ready
+    ↓
+FOR each ParsedElement:
+    ↓ (Stage 9: Match)
+    SelectorMatchingEngine.matchElement(element)
+        ↓ (MatchedRules[])
+    ↓ (Stage 10: Cascade)
+    CascadeResolver.resolveConflicts()
+        ↓ (ComputedStyle{})
+    ↓ (Stage 11: Map)
+    TailwindMapper.cssToTailwind()
+        ↓ (TailwindClasses[])
+    ↓ (Annotate element)
+    ↓
+Output: HTML with Tailwind classes + mappings
 ```
 
 ---
 
-## Dependency Map
+## Module Responsibilities
 
-### Service Dependencies
+### Part 1 Services (Existing + New)
 
-```
-src/index.ts
-  ├── initializeDatabase (from database/connection.ts)
-  ├── LessService
-  │   └── DatabaseService
-  │       └── pg.Client
-  ├── DatabaseService
-  │   └── pg.Client
-  └── ExportService
-      └── DatabaseService
+#### New: `services/ruleExtractionService.ts`
 
-LessService
-  └── fs (Node.js built-in)
-      └── (implicitly file system)
+**Responsibility:** Extract CSS selectors and rules from LESS files
 
-DatabaseService
-  ├── pg.Client
-  ├── crypto (for checksums)
-  └── logger
+**Public Methods:**
+- `extractRules(lessContent: string, filePath: string): Rule[]`
+- `flattenNestedSelectors(nestedRules): string[]`
+- `calculateSpecificity(selector: string): SpecificityScore`
 
-ExportService
-  ├── fs (for writing output)
-  ├── DatabaseService
-  └── logger
-```
+**Dependencies:**
+- LESS parser (for rule structure)
+- Logger
+- DatabaseService
 
-### Layers Don't Skip
+---
 
-- ✅ `index.ts` → `LessService` → `DatabaseService`
-- ✅ `ExportService` → `DatabaseService`
-- ❌ Never: `index.ts` → `DatabaseService` directly
-- ❌ Never: Services → `index.ts`
+### Part 2 Services (New)
+
+#### `part2/services/htmlParserService.ts`
+
+Parse HTML DOM strings into structured element tree.
+
+#### `part2/services/selectorMatchingEngine.ts` ⭐⭐
+
+Core engine matching elements to CSS rules.
+
+**Responsibilities:**
+- Index all LESS selectors
+- Match elements to selectors
+- Calculate specificity
+- Cache results for performance
+
+#### `part2/services/cascadeResolver.ts`
+
+Apply CSS cascade rules to resolve property conflicts.
+
+#### `part2/services/tailwindMapper.ts`
+
+Map CSS properties to Tailwind classes using theme tokens.
 
 ---
 
 ## Key Design Decisions
 
-### 1. Separation of Concerns
+### 1. Two-Part Architecture
 
-**Decision:** Three distinct services for three concerns
+**Decision:** Part 1 must complete before Part 2 begins
 
 **Rationale:**
-- Each service has single responsibility
-- Easy to test in isolation
-- Future extensions (e.g., TypeScript support) just add another service
-- Services can evolve independently
-
-**Alternative Considered:** Single monolithic processor class
-**Why Rejected:** Harder to test, less flexible, doesn't scale
+- Part 2 depends on Part 1's data (less_rules)
+- Allows independent testing and refinement
+- Clear separation of concerns
+- Part 1 can be deployed standalone
 
 ---
 
-### 2. Database-Driven Architecture
+### 2. Selector Index in Memory
 
-**Decision:** Store all intermediate data in database
+**Decision:** Load and cache all selectors in memory during Part 2
 
 **Rationale:**
-- Resumable processing (if interrupted, can retry stages)
-- Queryable history and audit trail
-- Supports future analytics/reporting
-- Can track import hierarchy queries
+- Matching is fast (no DB queries per element)
+- Selectors relatively small dataset
+- Performance critical for Part 2
+- Invalidate on LESS file changes
 
-**Alternative Considered:** In-memory processing only
-**Why Rejected:** Can't handle large projects, no failure recovery
+**Trade-off:** Memory vs speed (acceptable for typical LESS projects)
 
 ---
 
-### 3. Parameterized Queries
+### 3. Specificity as Tiebreaker
 
-**Decision:** All database queries use parameters ($1, $2, etc.)
+**Decision:** CSS specificity rules determine final properties
 
 **Rationale:**
-- SQL injection prevention
-- Performance (query plan caching)
-- Consistency and standards
-
-**Never:** String concatenation for queries
+- CSS standard behavior
+- Matches developer expectations
+- Predictable, deterministic results
+- Handles complex cascades correctly
 
 ---
 
-### 4. Centralized Logging
+### 4. No Pseudo-Class Support Initially
 
-**Decision:** Single logger instance, used everywhere
+**Decision:** Flag pseudo-classes (`:hover`, etc.) for manual review
 
 **Rationale:**
-- Consistent log format
-- Easy to redirect logs (file, cloud, etc.)
-- Single place to adjust levels
-- Supports debugging
-
-**Alternative Considered:** console.log throughout
-**Why Rejected:** Not controllable, not structured, not professional
+- Pseudo-classes don't exist in static HTML
+- Need runtime context to resolve
+- Can add heuristics later (`.link:hover` → suggest interaction classes)
+- Better to warn than silently ignore
 
 ---
 
-### 5. Custom Error Types
+## Extensibility
 
-**Decision:** Throw specific error types, not generic Error
+### Adding New CSS Property Mappings
 
-**Rationale:**
-- Caller can handle different errors differently
-- Error context preserved and queryable
-- Better error messages
-- Type-safe error handling
+1. Update `theme_tokens` table with new property→Tailwind mappings
+2. TailwindMapper automatically uses new mappings
 
----
+### Supporting New HTML Elements
 
-### 6. Transaction Boundaries
+1. HtmlParserService handles all HTML tags
+2. SelectorMatchingEngine applies same rules
+3. No code changes needed
 
-**Decision:** Transactions scoped to logical operations
+### Adding Custom Tailwind Rules
 
-**Rationale:**
-- Data consistency guaranteed
-- All-or-nothing semantic
-- Rollback on failure is automatic
-- Clear atomicity boundaries
+1. Create custom theme tokens in database
+2. TailwindMapper includes in output with `custom-` prefix
 
 ---
 
 ## Performance Considerations
 
-### Indexing Strategy
+### Part 1
 
-All frequently queried columns have indexes:
-- `less_files(status)` - For status filtering
-- `less_imports(parent_file_id)` - For import hierarchy queries
-- `less_variables(less_file_id)` - For variable lookups
+- Batch insert variables/rules (single query, not N queries)
+- Index selectors on (class, id, element) for fast lookups
+- Lazy load large files
 
-### Batch Operations
+### Part 2
 
-Bulk inserts use single query:
-```typescript
-// INSERT ... VALUES ($1,$2), ($3,$4), ... - Single query
-// Better than: FOR EACH INSERT - N queries
-```
-
-### Query Optimization
-
-JOINs preferred over multiple queries (avoid N+1):
-```typescript
-// SELECT files WITH variables in ONE query
-// Not: for each file, SELECT variables
-```
+- Cache selector index in memory
+- Parallelize element matching
+- Generate class suggestions without blocking
 
 ---
 
-## Extensibility Points
-
-### Adding New File Formats
-
-1. Create `TypeScriptService` (similar to `LessService`)
-2. Create new database table for TypeScript-specific data
-3. Create handler in `ExportService` for TypeScript → Tailwind
-4. Wire into `index.ts` pipeline
-
-### Adding New Export Formats
-
-1. Create method in `ExportService`
-2. Query relevant data from database
-3. Transform to target format
-4. Write output files
-
-### Adding Pre/Post Processing
-
-1. Create new service
-2. Add step in `index.ts` pipeline
-3. Wire input/output through database
-
----
-
-## Deployment Architecture
-
-```
-Environment Setup
-├── PostgreSQL instance (external or local)
-├── Node.js runtime (v18+)
-├── .env configuration
-└── Input LESS paths
-
-Application
-├── src/ (TypeScript source)
-├── dist/ (Compiled JavaScript)
-├── database/ (Schema & migrations)
-└── docs/ (Documentation)
-
-Output
-├── /output/tailwind.config.js
-├── /output/styles.css
-└── database (persisted state)
-```
-
----
-
-**Document Version:** 1.0  
+**Document Version:** 2.0 (Updated for Part 2)  
 **Last Updated:** October 29, 2025
