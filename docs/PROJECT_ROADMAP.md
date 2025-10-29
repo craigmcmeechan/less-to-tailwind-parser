@@ -1,5 +1,20 @@
 # PROJECT ROADMAP: LESS to Tailwind Parser (Corrected)
 
+## 🚀 Claude Code Integration (NEW!)
+
+**Want to use Claude Code for development?** See:
+- [CLAUDE_CODE_INVOCATION.md](./CLAUDE_CODE_INVOCATION.md) - How to invoke Claude Code for each stage
+- [CLAUDE_CODE_WORKFLOW.md](./CLAUDE_CODE_WORKFLOW.md) - The systematic development workflow
+- **Bootstrap script:** `./bootstrap-stage.sh [STAGE_NUMBER] [STAGE_NAME]`
+
+Claude Code will systematically:
+1. Read stage documentation
+2. Break it into testable sequential steps
+3. Implement → Test → Lint → Commit (one step at a time)
+4. Create a STAGE_N_TODO.md to track progress
+
+---
+
 ## Executive Summary
 
 **Two-Part System: LESS Extraction → DOM Matching**
@@ -256,27 +271,31 @@ Stage 9 (Matching) ← reads Stage 4 rules + Stage 8 DOM
 
 ```
 less-to-tailwind-parser/
+├── bootstrap-stage.sh              ← Use to start any stage
 ├── docs/
-│   ├── PROJECT_ROADMAP.md (this file)
+│   ├── PROJECT_ROADMAP.md         (this file)
 │   ├── ARCHITECTURE.md
 │   ├── CODE_STANDARDS.md
+│   ├── CLAUDE_CODE_WORKFLOW.md    ← NEW: Systematic workflow
+│   ├── CLAUDE_CODE_INVOCATION.md  ← NEW: How to invoke
 │   ├── stages/
 │   │   ├── 01_DATABASE_FOUNDATION.md ✅
 │   │   ├── 02_LESS_SCANNING.md ✅
 │   │   ├── 03_IMPORT_HIERARCHY.md ✅
-│   │   ├── 04_RULE_EXTRACTION.md ✅ (NEWLY CORRECTED)
-│   │   ├── 05_TAILWIND_EXPORT.md
-│   │   ├── 06_INTEGRATION.md
-│   │   ├── 07_TESTING_RELEASE.md
-│   │   ├── 08_CHROME_EXTENSION.md (ENHANCED)
-│   │   └── 09_DOM_TO_TAILWIND.md (REWRITTEN)
+│   │   ├── 04_RULE_EXTRACTION.md ✅ (CRITICAL STAGE)
+│   │   ├── 04_VARIABLE_EXTRACTION.md ✅
+│   │   ├── 05_TAILWIND_EXPORT.md ✅
+│   │   ├── 06_INTEGRATION.md ✅
+│   │   ├── 07_TESTING_RELEASE.md ✅
+│   │   ├── 08_CHROME_EXTENSION.md ✅
+│   │   └── 09_DOM_TO_TAILWIND.md ✅
 │   └── ...
 ├── src/
 │   ├── part1/
 │   │   ├── services/
 │   │   │   ├── scanService.ts
 │   │   │   ├── importResolverService.ts
-│   │   │   ├── lessCompilerService.ts ✅ (NEW)
+│   │   │   ├── lessCompilerService.ts ✅ (NEW - Stage 4)
 │   │   │   ├── variableExtractorService.ts
 │   │   │   └── tailwindExporterService.ts
 │   │   └── ...
@@ -299,6 +318,12 @@ less-to-tailwind-parser/
 
 ## Start Here
 
+### With Claude Code
+1. Run: `./bootstrap-stage.sh 1 DATABASE_FOUNDATION`
+2. Read: [CLAUDE_CODE_INVOCATION.md](./CLAUDE_CODE_INVOCATION.md) (Stage 1 section)
+3. Follow: [CLAUDE_CODE_WORKFLOW.md](./CLAUDE_CODE_WORKFLOW.md) for systematic approach
+
+### Manual Development
 1. **Read:** [Stage 1: Database Foundation](./stages/01_DATABASE_FOUNDATION.md)
 2. **Understand:** How Stage 4 fits in (see [Stage 4: Rule Extraction](./stages/04_RULE_EXTRACTION.md))
 3. **Build:** Stages 1-3 first (scanning and imports)
@@ -308,5 +333,19 @@ less-to-tailwind-parser/
 
 ---
 
+## Stage Status
+
+- [ ] **STAGE 1: Database Foundation** - Ready to start
+- [ ] **STAGE 2: LESS Scanning** - Ready to start after Stage 1
+- [ ] **STAGE 3: Import Hierarchy** - Ready to start after Stage 2
+- [ ] **STAGE 4: CSS Rule Extraction** - Ready to start after Stage 3 ⚠️ CRITICAL
+- [ ] **STAGE 5: Variable Extraction** - Ready to start after Stage 4
+- [ ] **STAGE 6: Tailwind Export** - Ready to start after Stage 5
+- [ ] **STAGE 7: Integration & Testing** - Ready to start after Stage 6
+- [ ] **STAGE 8: Chrome Extension** - Ready to start after Stage 7
+- [ ] **STAGE 9: Backend Matching** - Ready to start after Stage 8
+
+---
+
 **Last Updated:** October 29, 2025  
-**Version:** 2.0 (Corrected Architecture)
+**Version:** 2.1 (Added Claude Code Integration)
