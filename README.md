@@ -1,322 +1,382 @@
 # LESS to Tailwind Parser
 
-A TypeScript-based tool that scans LESS CSS files from specified directories, parses their hierarchical structure with imports, stores the data in PostgreSQL, and exports the processed styles as Tailwind CSS-compatible output.
+Convert LESS CSS files to Tailwind CSS configuration with Chrome extension DOM capture and intelligent matching.
 
-## Features
+**Status:** 📋 Ready for development  
+**Architecture:** ✅ Corrected and complete  
+**Workspaces:** ✅ Set up and ready to use
 
-- **Multi-Path Scanning**: Scan multiple directories for LESS CSS files
-- **Hierarchical Import Tracking**: Maintains the import hierarchy and dependencies between LESS files
-- **PostgreSQL Storage**: Persists all LESS data in a structured PostgreSQL database
-- **Tailwind CSS Export**: Converts and exports the parsed LESS styles to Tailwind-compatible CSS
-- **Type-Safe**: Built with TypeScript for enhanced development experience
-- **Database Migrations**: Automated database schema setup and management
-- **Comprehensive Logging**: Detailed logging for debugging and monitoring
-- **Variable Extraction**: Automatically extracts LESS variables and converts them to Tailwind theme configurations
+---
 
-## Tech Stack
+## Quick Start (5 Minutes)
 
-- **Runtime**: Node.js
-- **Language**: TypeScript
-- **Database**: PostgreSQL
-- **LESS Parser**: Built-in regex parsing for LESS syntax
-- **Database Driver**: pg (node-postgres)
+```bash
+# 1. Clone repository
+git clone https://github.com/craigmcmeechan/less-to-tailwind-parser.git
+cd less-to-tailwind-parser
+
+# 2. Create workspaces for each stage
+bash setup-workspaces.sh
+
+# 3. Enter your first stage
+cd .worktrees/stage-1
+
+# 4. Install and start
+npm install
+npm run dev
+```
+
+See **QUICK_START.md** for more details.
+
+---
+
+## Project Overview
+
+### Part 1: LESS Extraction (Stages 1-7)
+Transform LESS CSS files into PostgreSQL with extracted theme tokens and compiled CSS rules.
+
+**Stages:**
+1. **Database Foundation** - PostgreSQL setup, migrations
+2. **LESS File Scanning** - Discover and version LESS files
+3. **Import Hierarchy** - Parse LESS @import relationships
+4. **CSS Rule Extraction** - Compile LESS to CSS with resolved variables ⭐ CRITICAL
+5. **Variable Extraction** - Extract @variables, @mixins, @functions
+6. **Tailwind Export** - Generate tailwind.config.js
+7. **Integration & Testing** - Full pipeline, CLI, testing
+
+### Part 2: DOM Capture + Matching (Stages 8-9)
+Chrome extension captures DOM elements → backend matches to LESS rules → generates Tailwind suggestions.
+
+**Stages:**
+8. **Chrome Extension** - Optimized DOM capture tool
+9. **Backend Matching** - CSS selector matching, cascade resolution, Tailwind generation
+
+---
+
+## Documentation
+
+### Start Here
+- **QUICK_START.md** - 5-minute setup guide
+- **GIT_WORKSPACES_GUIDE.md** - Complete workspace usage guide
+- **GIT_WORKSPACES_SETUP.md** - What was created and why
+
+### Architecture & Design
+- **ARCHITECTURE_CORRECTIONS.md** - All blind spots identified and fixed
+- **docs/ARCHITECTURE.md** - System design overview
+- **docs/PROJECT_ROADMAP.md** - Complete timeline and milestones
+
+### Implementation Guides
+- **docs/stages/01_DATABASE_FOUNDATION.md**
+- **docs/stages/02_LESS_SCANNING.md**
+- **docs/stages/03_IMPORT_HIERARCHY.md**
+- **docs/stages/04_RULE_EXTRACTION.md** (NEW - CRITICAL STAGE)
+- **docs/stages/05_VARIABLE_EXTRACTION.md**
+- **docs/stages/06_TAILWIND_EXPORT.md**
+- **docs/stages/07_INTEGRATION.md**
+- **docs/stages/08_CHROME_EXTENSION.md** (ENHANCED)
+- **docs/stages/09_DOM_TO_TAILWIND.md** (REWRITTEN)
+
+### Code Standards & Practices
+- **docs/CODE_STANDARDS.md** - TypeScript conventions
+- **docs/TESTING_GUIDE.md** - Jest setup and coverage
+- **docs/LOGGING_GUIDE.md** - Logging practices
+- **docs/ERROR_HANDLING.md** - Error strategies
+- **docs/DATABASE_OPERATIONS.md** - Query patterns
+
+---
+
+## Git Workspaces
+
+Each stage has its own independent Git worktree for parallel development.
+
+### Available Workspaces
+```
+.worktrees/
+├── dev/                          # Integration branch
+├── stage-1/                       # Database Foundation
+├── stage-2/                       # LESS File Scanning
+├── stage-3/                       # Import Hierarchy
+├── stage-4/                       # CSS Rule Extraction
+├── stage-5/                       # Variable Extraction
+├── stage-6/                       # Tailwind Export
+├── stage-7/                       # Integration & Testing
+├── stage-8/                       # Chrome Extension
+└── stage-9/                       # DOM Matching & Tailwind
+```
+
+### Quick Commands
+
+```bash
+# Setup
+bash setup-workspaces.sh
+
+# Using shell
+cd .worktrees/stage-1
+
+# Using Makefile
+make enter-stage-1
+make list
+make install-all
+make push-all
+```
+
+See **GIT_WORKSPACES_GUIDE.md** for all commands.
+
+---
+
+## Architecture Highlights
+
+### ✅ What's Correct
+- Using Chrome computed styles for cascade resolution
+- Hierarchical DOM storage allows parent context
+- Backend-only matching keeps extension simple
+- Part 1 scope hierarchy for variable resolution
+
+### ✨ Recent Corrections
+- **Stage 4 specification** - CSS compilation with specificity calculation
+- **Real CSS matching** - Selector parsing, descendant/attribute/pseudo-classes
+- **Cascade resolution** - Specificity + rule ordering for correct winner
+- **Variable resolution** - Happens in Part 1, used by Stage 4
+- **Media queries** - Full responsive design support
+
+See **ARCHITECTURE_CORRECTIONS.md** for detailed analysis.
+
+---
+
+## Key Blind Spots Fixed
+
+| Issue | Impact | Fix |
+|-------|--------|-----|
+| Stage 4 missing | No CSS rules for matching | Created full Stage 4 spec |
+| Extension inefficient | 10x slower, huge payloads | Optimized property capture |
+| Naive matching | Only matches 30% of rules | Real CSS selector engine |
+| No cascade logic | Wrong rules selected | Specificity + order tracking |
+| Variables unresolved | Matching fails on values | Resolved in Part 1 → Stage 4 |
+| Media queries ignored | No responsive support | Full viewport context |
+
+---
+
+## Critical Stage: Stage 4
+
+⚠️ **Stage 4 (CSS Rule Extraction) is not optional.**
+
+It's the bridge between LESS source and matching engine:
+- Compiles LESS to CSS
+- Resolves variables using Part 1 scope
+- Calculates CSS specificity
+- Tracks rule order for cascade
+- Handles media queries
+
+**Must be completed before Stage 9 can work.**
+
+---
+
+## Development Workflow
+
+### Single Developer
+```bash
+# Enter Stage 1
+cd .worktrees/stage-1
+
+# Make changes
+# Run tests
+npm test
+
+# Commit
+git add . && git commit -m "feat: ..."
+git push origin feature/01-database-foundation
+
+# Create PR on GitHub
+```
+
+### Team (Parallel)
+```bash
+# Dev A: Stage 1
+cd .worktrees/stage-1
+
+# Dev B: Stage 4 (in other terminal)
+cd .worktrees/stage-4
+
+# Dev C: Stage 7 (in another terminal)
+cd .worktrees/stage-7
+
+# All work simultaneously, no conflicts
+```
+
+---
 
 ## Project Structure
 
 ```
 less-to-tailwind-parser/
-├── src/
-│   ├── index.ts                      # Main entry point
-│   ├── database/
-│   │   └── connection.ts             # Database initialization and migrations
-│   ├── services/
-│   │   ├── lessService.ts            # LESS file scanning and parsing
-│   │   ├── databaseService.ts        # Database operations
-│   │   └── exportService.ts          # Tailwind conversion and export
-│   └── utils/
-│       └── logger.ts                 # Logging utility
-├── database/
-│   └── schema.sql                    # PostgreSQL schema definition
-├── package.json                      # Project dependencies
-├── tsconfig.json                     # TypeScript configuration
-├── jest.config.js                    # Jest testing configuration
-├── .eslintrc.json                    # ESLint configuration
-├── .prettierrc                        # Prettier code formatting
-├── .env.example                      # Environment variables template
-└── README.md                         # This file
+├── .worktrees/                     # Git worktrees (one per stage)
+│   ├── stage-1/
+│   ├── stage-2/
+│   └── ...
+├── docs/                           # Documentation (shared)
+│   ├── stages/                     # Stage guides
+│   └── *.md
+├── src/                            # Source code (shared)
+│   ├── shared/                     # Used by all stages
+│   ├── part1/                      # Stages 1-7
+│   └── part2/                      # Stages 8-9
+├── tests/                          # Tests
+├── package.json
+├── Makefile                        # Workspace commands
+├── setup-workspaces.sh             # Setup script
+├── GIT_WORKSPACES_GUIDE.md         # Full guide
+├── QUICK_START.md                  # Quick start
+└── README.md                       # This file
 ```
 
-## Installation
+---
 
-### Prerequisites
+## Technology Stack
 
-- Node.js 16+ or higher
+- **Language:** TypeScript
+- **Runtime:** Node.js
+- **Database:** PostgreSQL
+- **API:** Express.js
+- **Testing:** Jest
+- **Browser:** Chrome Extension (Manifest v3)
+- **CSS Framework:** Tailwind CSS
+
+---
+
+## Getting Started
+
+### 1. Prerequisites
+- Node.js 16+
 - npm or yarn
 - PostgreSQL 12+
+- Git
+- Bash (for setup script)
 
-### Setup Steps
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/less-to-tailwind-parser.git
-   cd less-to-tailwind-parser
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Configure environment variables**
-   ```bash
-   cp .env.example .env
-   ```
-   
-   Edit `.env` with your PostgreSQL credentials:
-   ```env
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_NAME=less_to_tailwind
-   DB_USER=postgres
-   DB_PASSWORD=your_password
-   
-   LESS_SCAN_PATHS=./less,./styles
-   OUTPUT_DIR=./output
-   TAILWIND_CONFIG_OUTPUT=./output/tailwind.config.js
-   
-   NODE_ENV=development
-   ```
-
-4. **Create the PostgreSQL database**
-   ```bash
-   createdb less_to_tailwind
-   ```
-
-5. **Build the TypeScript code**
-   ```bash
-   npm run build
-   ```
-
-## Usage
-
-### Run the Parser
-
+### 2. Clone & Setup
 ```bash
-npm start
+git clone https://github.com/craigmcmeechan/less-to-tailwind-parser.git
+cd less-to-tailwind-parser
+bash setup-workspaces.sh
 ```
 
-Or use development mode with automatic TypeScript compilation:
+### 3. Choose Your Stage
 ```bash
+cd .worktrees/stage-1      # Start with Database Foundation
+# or any other stage
+```
+
+### 4. Read Documentation
+```bash
+cat ../../docs/stages/01_DATABASE_FOUNDATION.md
+```
+
+### 5. Install & Develop
+```bash
+npm install
 npm run dev
 ```
 
-### Database Operations
+---
 
-Initialize the database schema:
+## Command Reference
+
+### Workspaces
 ```bash
-npm run db:migrate
+git worktree list                   # List all workspaces
 ```
 
-Reset the database (careful!):
+### Makefile
 ```bash
-npm run db:reset
+make help                           # Show all commands
+make setup                          # Create workspaces
+make enter-stage-1                  # Enter workspace
+make install-all                    # Install all
+make push-all                       # Push all
 ```
 
-## API Reference
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DB_HOST` | PostgreSQL host | localhost |
-| `DB_PORT` | PostgreSQL port | 5432 |
-| `DB_NAME` | Database name | less_to_tailwind |
-| `DB_USER` | Database user | postgres |
-| `DB_PASSWORD` | Database password | password |
-| `LESS_SCAN_PATHS` | Comma-separated paths to scan | ./less,./styles |
-| `OUTPUT_DIR` | Directory for exporting CSS | ./output |
-| `TAILWIND_CONFIG_OUTPUT` | Path for Tailwind config file | ./output/tailwind.config.js |
-| `NODE_ENV` | Environment (development/production) | development |
-| `LOG_LEVEL` | Logging level (DEBUG/INFO/WARN/ERROR) | INFO |
-
-### Services
-
-#### LessService
-Handles LESS file scanning and parsing:
-- `scanForLessFiles(paths: string[])` - Scans directories for LESS files
-- `extractImports(content: string)` - Extracts @import statements
-- `extractVariables(content: string)` - Extracts LESS variables
-- `extractMixins(content: string)` - Extracts LESS mixins
-
-#### DatabaseService
-Manages all database operations:
-- `storeLessFile(lessFile: LessFile)` - Stores a LESS file in database
-- `storeImportRelationship(...)` - Records import hierarchy
-- `storeVariables(fileId, variables)` - Stores extracted variables
-- `resolveImports(fileId)` - Resolves unresolved imports
-- `getProcessingStats()` - Gets processing statistics
-
-#### ExportService
-Converts LESS to Tailwind format:
-- `convertToTailwind()` - Converts stored LESS data to Tailwind config
-- `exportToFile(config, path)` - Writes Tailwind config to file
-- `generateCSS(config)` - Generates CSS from configuration
-
-## Development
-
-### Code Formatting
-
-Format all TypeScript files:
+### Git
 ```bash
-npm run format
+git status                          # Check changes
+git add .                           # Stage files
+git commit -m "message"             # Commit
+git push origin branch-name         # Push
 ```
 
-### Linting
+See **GIT_WORKSPACES_GUIDE.md** for complete command reference.
 
-Run ESLint to check for code issues:
+---
+
+## Documentation Hierarchy
+
+1. **README.md** (this file) - Overview
+2. **QUICK_START.md** - Get up and running in 5 minutes
+3. **GIT_WORKSPACES_GUIDE.md** - How to use workspaces
+4. **docs/stages/0X_*.md** - Implementation details
+5. **ARCHITECTURE_CORRECTIONS.md** - Why these corrections exist
+
+---
+
+## Support & Troubleshooting
+
+### Common Issues
+
+**Q: Workspaces not created?**
 ```bash
-npm run lint
+bash setup-workspaces.sh
 ```
 
-### Testing
-
-Run the test suite:
+**Q: Missing node_modules?**
 ```bash
-npm test
+cd .worktrees/stage-X
+npm install
 ```
 
-Watch mode for development:
+**Q: Can't find docs?**
 ```bash
-npm test -- --watch
+cat ../../docs/stages/0X_*.md
 ```
 
-## Database Schema
+See **GIT_WORKSPACES_GUIDE.md** Troubleshooting section for more.
 
-The application uses the following main tables:
+---
 
-### less_files
-Stores LESS files and metadata
-- `id` - Primary key
-- `file_name` - Original filename
-- `file_path` - Absolute file path
-- `relative_path` - Path relative to project root
-- `content` - File content
-- `checksum` - SHA256 of content
-- `status` - Processing status (pending, processing, completed, error)
+## Key Files to Review
 
-### less_imports
-Tracks hierarchical import relationships
-- `id` - Primary key
-- `parent_file_id` - ID of importing file
-- `child_file_id` - ID of imported file
-- `import_path` - Import path string
-- `import_type` - Type of import (standard, optional, reference)
-- `is_resolved` - Whether the import was successfully resolved
+- **QUICK_START.md** - Start here (5 min read)
+- **setup-workspaces.sh** - How workspaces are created
+- **Makefile** - Convenient commands
+- **docs/PROJECT_ROADMAP.md** - Complete timeline
+- **ARCHITECTURE_CORRECTIONS.md** - Why things are designed this way
 
-### less_variables
-Stores extracted variables and mixins
-- `id` - Primary key
-- `less_file_id` - Reference to less_files
-- `variable_name` - Variable name
-- `variable_value` - Variable value
-- `is_mixin` - Whether this is a mixin
+---
 
-### tailwind_exports
-Stores generated Tailwind configurations
-- `id` - Primary key
-- `export_name` - Name of export
-- `export_type` - Type (config, css, etc.)
-- `export_data` - Serialized export data
+## Next Steps
 
-## Workflow
+1. ✅ Read **QUICK_START.md** (5 minutes)
+2. ✅ Run `bash setup-workspaces.sh` (2 minutes)
+3. ✅ Enter your first stage: `cd .worktrees/stage-1`
+4. ✅ Read stage documentation: `cat ../../docs/stages/01_DATABASE_FOUNDATION.md`
+5. ✅ Start developing: `npm install && npm run dev`
 
-1. **Scanning**: The parser scans specified directories for `.less` files
-2. **Parsing**: Each file is parsed to extract:
-   - Variables (`@variable: value`)
-   - Mixins (`.mixin()`)
-   - Imports (`@import 'path'`)
-3. **Storage**: All extracted data is stored in PostgreSQL with hierarchical relationships
-4. **Processing**: Import hierarchies are resolved and tracked
-5. **Export**: Data is converted to Tailwind theme configuration format
-6. **Output**: Tailwind config is written to `tailwind.config.js`
+---
 
-## Example
+## Repository
 
-Given a LESS file structure:
-```less
-// variables.less
-@primary-color: #007bff;
-@secondary-color: #6c757d;
-@spacing-unit: 8px;
+**GitHub:** https://github.com/craigmcmeechan/less-to-tailwind-parser
 
-// components.less
-@import 'variables.less';
-
-.button {
-  background: @primary-color;
-  padding: @spacing-unit;
-}
-```
-
-The parser will:
-1. Scan and find both files
-2. Extract variables and store them in database
-3. Record the import relationship
-4. Generate a Tailwind config:
-```javascript
-module.exports = {
-  theme: {
-    extend: {
-      colors: {
-        'primary-color': '#007bff',
-        'secondary-color': '#6c757d',
-      },
-      spacing: {
-        'spacing-unit': '8px',
-      }
-    }
-  }
-}
-```
-
-## Troubleshooting
-
-### Database Connection Error
-- Ensure PostgreSQL is running
-- Check credentials in `.env`
-- Verify database exists
-
-### No LESS Files Found
-- Check `LESS_SCAN_PATHS` in `.env`
-- Ensure files end with `.less` extension
-- Verify paths are correct and accessible
-
-### Import Resolution Issues
-- Check import paths in LESS files
-- Ensure imported files exist and are included in scan paths
-- Review logs for specific path resolution errors
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+---
 
 ## License
 
-MIT - see LICENSE file for details
+MIT (or your chosen license)
 
-## Support
+---
 
-For issues, questions, or suggestions, please open an issue on GitHub.
+## Contributors
 
-## Roadmap
+- Craig McMeechan - Initial architecture and design
 
-- [ ] Support for nested variable references
-- [ ] Advanced mixin parameter extraction
-- [ ] CSS-in-JS output format
-- [ ] Web UI for managing LESS files
-- [ ] CLI arguments for dynamic configuration
-- [ ] Support for SCSS files
+---
+
+**Last Updated:** October 29, 2025  
+**Version:** 1.0 - Complete with Git Workspaces
