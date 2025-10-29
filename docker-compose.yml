@@ -1,0 +1,138 @@
+version: '3.9'
+
+services:
+  # Main development environment
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: less-to-tailwind-parser-dev
+    
+    # Keep container running
+    stdin_open: true
+    tty: true
+    
+    # Mount volumes
+    volumes:
+      # Project root - all code
+      - .:/workspace
+      
+      # Node modules cache (prevent reinstall)
+      - node_modules:/workspace/node_modules
+      
+      # Global npm cache
+      - npm-cache:/root/.npm
+      
+      # Git config
+      - ~/.gitconfig:/root/.gitconfig:ro
+      - ~/.ssh:/root/.ssh:ro
+      
+      # Stage worktrees (for isolated stage work)
+      - ./stages/1:/workspace/stages/1
+      - ./stages/2:/workspace/stages/2
+      - ./stages/3:/workspace/stages/3
+      - ./stages/4:/workspace/stages/4
+      - ./stages/5:/workspace/stages/5
+      - ./stages/6:/workspace/stages/6
+      - ./stages/7:/workspace/stages/7
+      - ./stages/8:/workspace/stages/8
+      - ./stages/9:/workspace/stages/9
+      
+      # Bash history
+      - dev-bash-history:/root/.bash_history
+    
+    # Environment
+    environment:
+      - NODE_ENV=development
+      - PATH=/workspace/node_modules/.bin:$PATH
+      - COMPOSE_PROJECT_NAME=less-to-tailwind-parser
+    
+    # Port mappings (for future API server)
+    ports:
+      - "3000:3000"  # API server
+      - "5432:5432"  # PostgreSQL
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "npm", "run", "build"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # PostgreSQL database for development
+  postgres:
+    image: postgres:16-alpine
+    container_name: less-to-tailwind-parser-postgres
+    
+    environment:
+      - POSTGRES_USER=dev
+      - POSTGRES_PASSWORD=devpassword
+      - POSTGRES_DB=less_to_tailwind
+    
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    
+    ports:
+      - "5432:5432"
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    
+    restart: unless-stopped
+
+  # Redis cache (optional, for future caching)
+  redis:
+    image: redis:7-alpine
+    container_name: less-to-tailwind-parser-redis
+    
+    command: redis-server --appendonly yes
+    
+    volumes:
+      - redis-data:/data
+    
+    ports:
+      - "6379:6379"
+    
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    
+    restart: unless-stopped
+
+# Named volumes for persistence and caching
+volumes:
+  node_modules:
+    driver: local
+  npm-cache:
+    driver: local
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  dev-bash-history:
+    driver: local
+
+# Network for service communication
+networks:
+  default:
+    name: less-to-tailwind-parser-network
+    driver: bridge
