@@ -1,180 +1,132 @@
-.PHONY: help setup list enter-stage-1 enter-stage-2 enter-stage-3 enter-stage-4 enter-stage-5 enter-stage-6 enter-stage-7 enter-stage-8 enter-stage-9 enter-dev install-all commit-all push-all status-all
+# Makefile - Docker Development Environment
 
+.PHONY: help docker-build docker-up docker-down docker-logs docker-clean \
+        docker-shell docker-test docker-lint docker-format docker-build-ts \
+        docker-bootstrap stage-1 stage-2 stage-3 stage-4 stage-5 \
+        stage-6 stage-7 stage-8 stage-9
+
+# Default target
 help:
-	@echo "LESS to Tailwind Parser - Git Workspaces Makefile"
+	@echo "╔════════════════════════════════════════════════════════════╗"
+	@echo "║  LESS to Tailwind Parser - Docker Development              ║"
+	@echo "║  Available Commands                                         ║"
+	@echo "╚════════════════════════════════════════════════════════════╝"
 	@echo ""
-	@echo "Setup Commands:"
-	@echo "  make setup              Create all stage workspaces"
-	@echo "  make list               List all workspaces"
+	@echo "🐳 Docker Commands:"
+	@echo "  make docker-build       Build Docker image"
+	@echo "  make docker-up          Start all services (background)"
+	@echo "  make docker-down        Stop all services"
+	@echo "  make docker-shell       Enter dev container shell"
+	@echo "  make docker-logs        View logs from all services"
+	@echo "  make docker-clean       Remove containers and volumes"
 	@echo ""
-	@echo "Enter Workspace Commands:"
-	@echo "  make enter-stage-1      Enter Stage 1 workspace"
-	@echo "  make enter-stage-2      Enter Stage 2 workspace"
-	@echo "  ... (up to stage-9)"
-	@echo "  make enter-dev          Enter development workspace"
+	@echo "🧪 Development Commands (inside container):"
+	@echo "  make docker-test        Run tests"
+	@echo "  make docker-lint        Check code quality"
+	@echo "  make docker-format      Format code"
+	@echo "  make docker-build-ts    Build TypeScript"
 	@echo ""
-	@echo "Installation:"
-	@echo "  make install-all        Install npm dependencies in all workspaces"
-	@echo "  make install-stage-1    Install dependencies in Stage 1 only"
+	@echo "📚 Bootstrap Commands:"
+	@echo "  make docker-bootstrap N=[N] NAME=[NAME]   Bootstrap a stage"
+	@echo "  make stage-1            Bootstrap Stage 1 (DATABASE_FOUNDATION)"
+	@echo "  make stage-2            Bootstrap Stage 2 (LESS_SCANNING)"
+	@echo "  make stage-3            Bootstrap Stage 3 (IMPORT_HIERARCHY)"
+	@echo "  make stage-4            Bootstrap Stage 4 (RULE_EXTRACTION)"
+	@echo "  make stage-5            Bootstrap Stage 5 (VARIABLE_EXTRACTION)"
+	@echo "  make stage-6            Bootstrap Stage 6 (TAILWIND_EXPORT)"
+	@echo "  make stage-7            Bootstrap Stage 7 (INTEGRATION)"
+	@echo "  make stage-8            Bootstrap Stage 8 (CHROME_EXTENSION)"
+	@echo "  make stage-9            Bootstrap Stage 9 (DOM_TO_TAILWIND)"
 	@echo ""
-	@echo "Status & Info:"
-	@echo "  make list               List all workspaces and branches"
-	@echo "  make status-all         Git status in all workspaces"
-	@echo ""
-	@echo "Bulk Operations:"
-	@echo "  make commit-all MSG=\"your message\"  Commit in all workspaces"
-	@echo "  make push-all           Push all workspaces"
-	@echo ""
-	@echo "Development:"
-	@echo "  make clean              Remove all node_modules"
-	@echo "  make logs               View git logs for all branches"
+	@echo "Examples:"
+	@echo "  make docker-up && make docker-shell"
+	@echo "  make stage-1"
+	@echo "  docker-compose exec dev npm test"
 	@echo ""
 
-setup:
-	@echo "🚀 Setting up workspaces..."
-	bash setup-workspaces.sh
-	@echo "✅ Setup complete!"
+# Docker image and container management
+docker-build:
+	@echo "🔨 Building Docker image..."
+	docker-compose build --no-cache
 
-list:
-	@echo "📦 Git Workspaces:"
-	@git worktree list
+docker-up:
+	@echo "🚀 Starting Docker services..."
+	docker-compose up -d
+	@echo "✓ Services started"
+	@echo "  PostgreSQL: localhost:5432"
+	@echo "  Redis: localhost:6379"
+	@echo "  API: localhost:3000 (when running)"
+	@echo ""
+	@echo "Enter container: make docker-shell"
 
-enter-stage-1:
-	@cd .worktrees/stage-1 && bash
+docker-down:
+	@echo "⏹ Stopping Docker services..."
+	docker-compose down
+	@echo "✓ Services stopped"
 
-enter-stage-2:
-	@cd .worktrees/stage-2 && bash
+docker-logs:
+	@echo "📋 Service logs (Ctrl+C to exit)..."
+	docker-compose logs -f
 
-enter-stage-3:
-	@cd .worktrees/stage-3 && bash
+docker-clean:
+	@echo "🧹 Cleaning up containers and volumes..."
+	docker-compose down -v
+	@echo "✓ Cleaned"
 
-enter-stage-4:
-	@cd .worktrees/stage-4 && bash
+docker-shell:
+	@echo "📦 Entering development container..."
+	docker-compose exec dev bash
 
-enter-stage-5:
-	@cd .worktrees/stage-5 && bash
+# Development commands
+docker-test:
+	@echo "🧪 Running tests..."
+	docker-compose exec dev npm test
 
-enter-stage-6:
-	@cd .worktrees/stage-6 && bash
+docker-lint:
+	@echo "🔍 Checking code quality..."
+	docker-compose exec dev npm run lint
 
-enter-stage-7:
-	@cd .worktrees/stage-7 && bash
+docker-format:
+	@echo "✨ Formatting code..."
+	docker-compose exec dev npm run format
 
-enter-stage-8:
-	@cd .worktrees/stage-8 && bash
+docker-build-ts:
+	@echo "🏗 Building TypeScript..."
+	docker-compose exec dev npm run build
 
-enter-stage-9:
-	@cd .worktrees/stage-9 && bash
-
-enter-dev:
-	@cd .worktrees/dev && bash
-
-install-all:
-	@echo "📦 Installing dependencies in all workspaces..."
-	@for dir in .worktrees/*/; do \
-		echo "Installing in $$dir..."; \
-		cd "$$dir" && npm install && cd ../.. ; \
-	done
-	@echo "✅ All dependencies installed!"
-
-install-stage-1:
-	@cd .worktrees/stage-1 && npm install
-
-install-stage-2:
-	@cd .worktrees/stage-2 && npm install
-
-install-stage-3:
-	@cd .worktrees/stage-3 && npm install
-
-install-stage-4:
-	@cd .worktrees/stage-4 && npm install
-
-install-stage-5:
-	@cd .worktrees/stage-5 && npm install
-
-install-stage-6:
-	@cd .worktrees/stage-6 && npm install
-
-install-stage-7:
-	@cd .worktrees/stage-7 && npm install
-
-install-stage-8:
-	@cd .worktrees/stage-8 && npm install
-
-install-stage-9:
-	@cd .worktrees/stage-9 && npm install
-
-status-all:
-	@echo "📋 Git Status in All Workspaces:"
-	@for dir in .worktrees/*/; do \
-		echo ""; \
-		echo "=== $$dir ==="; \
-		cd "$$dir" && git status --short && cd ../.. ; \
-	done
-
-commit-all:
-	@if [ -z "$(MSG)" ]; then \
-		echo "❌ Error: MSG is required"; \
-		echo "Usage: make commit-all MSG=\"your commit message\""; \
+# Bootstrap commands
+docker-bootstrap:
+	@if [ -z "$(N)" ] || [ -z "$(NAME)" ]; then \
+		echo "❌ Usage: make docker-bootstrap N=[NUMBER] NAME=[STAGE_NAME]"; \
+		echo "   Example: make docker-bootstrap N=1 NAME=DATABASE_FOUNDATION"; \
 		exit 1; \
 	fi
-	@echo "📝 Committing in all workspaces..."
-	@for dir in .worktrees/*/; do \
-		echo "Committing in $$dir..."; \
-		cd "$$dir" && git add -A && git commit -m "$(MSG)" || true && cd ../.. ; \
-	done
-	@echo "✅ Commits complete!"
+	@echo "🎯 Bootstrapping Stage $(N): $(NAME)..."
+	docker-compose exec dev ./bootstrap-stage.sh $(N) $(NAME)
 
-push-all:
-	@echo "📤 Pushing all workspaces..."
-	@for dir in .worktrees/*/; do \
-		branch=$$(cd "$$dir" && git rev-parse --abbrev-ref HEAD); \
-		echo "Pushing $$dir (branch: $$branch)..."; \
-		cd "$$dir" && git push origin "$$branch" && cd ../.. ; \
-	done
-	@echo "✅ All pushes complete!"
+stage-1:
+	@make docker-bootstrap N=1 NAME=DATABASE_FOUNDATION
 
-clean:
-	@echo "🧹 Removing node_modules from all workspaces..."
-	@for dir in .worktrees/*/; do \
-		echo "Cleaning $$dir..."; \
-		rm -rf "$$dir/node_modules" ; \
-	done
-	@echo "✅ Cleanup complete!"
+stage-2:
+	@make docker-bootstrap N=2 NAME=LESS_SCANNING
 
-logs:
-	@echo "📋 Git Logs (all branches):"
-	@git log --oneline --graph --all --decorate -20
+stage-3:
+	@make docker-bootstrap N=3 NAME=IMPORT_HIERARCHY
 
-fetch-all:
-	@echo "🔄 Fetching latest from all remotes..."
-	@for dir in .worktrees/*/; do \
-		echo "Fetching $$dir..."; \
-		cd "$$dir" && git fetch origin && cd ../.. ; \
-	done
-	@echo "✅ Fetch complete!"
+stage-4:
+	@make docker-bootstrap N=4 NAME=RULE_EXTRACTION
 
-info:
-	@echo "LESS to Tailwind Parser Project Info"
-	@echo ""
-	@echo "📍 Repository: https://github.com/craigmcmeechan/less-to-tailwind-parser"
-	@echo "📚 Documentation:"
-	@echo "   - Quick Start: QUICK_START.md"
-	@echo "   - Full Guide: GIT_WORKSPACES_GUIDE.md"
-	@echo "   - Architecture: docs/ARCHITECTURE.md"
-	@echo "   - Roadmap: docs/PROJECT_ROADMAP.md"
-	@echo ""
-	@echo "🏗️  Stages:"
-	@echo "   1. Database Foundation"
-	@echo "   2. LESS File Scanning"
-	@echo "   3. Import Hierarchy"
-	@echo "   4. CSS Rule Extraction (CRITICAL)"
-	@echo "   5. Variable Extraction"
-	@echo "   6. Tailwind Export"
-	@echo "   7. Integration & Testing"
-	@echo "   8. Chrome Extension"
-	@echo "   9. DOM Matching & Tailwind"
-	@echo ""
-	@echo "Run 'make help' for commands"
+stage-5:
+	@make docker-bootstrap N=5 NAME=VARIABLE_EXTRACTION
 
-.DEFAULT_GOAL := help
+stage-6:
+	@make docker-bootstrap N=6 NAME=TAILWIND_EXPORT
+
+stage-7:
+	@make docker-bootstrap N=7 NAME=INTEGRATION
+
+stage-8:
+	@make docker-bootstrap N=8 NAME=CHROME_EXTENSION
+
+stage-9:
+	@make docker-bootstrap N=9 NAME=DOM_TO_TAILWIND
