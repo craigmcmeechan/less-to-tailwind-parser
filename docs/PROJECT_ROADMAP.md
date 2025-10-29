@@ -1,325 +1,304 @@
-# PROJECT ROADMAP: LESS to Tailwind Parser
+# PROJECT ROADMAP: LESS to Tailwind Parser (UPDATED)
 
 ## Executive Summary
 
-This document outlines the complete development roadmap for the LESS to Tailwind CSS Parser project. The project will be delivered in 6 sequential/parallel stages, each with clearly defined testable outcomes and acceptance criteria.
+**Updated Scope:** This is now a TWO-PART system:
 
-**Project Goal:** Transform LESS CSS files from multiple source directories into a hierarchically-structured PostgreSQL database, then export as Tailwind CSS-compatible configuration and styles.
+**Part 1 - LESS CSS Extraction:** Transform LESS CSS files from multiple source directories into a hierarchically-structured PostgreSQL database with extracted theme tokens.
 
-**Total Estimated Timeline:** 6-8 weeks (depending on team size and complexity of existing LESS)
+**Part 2 - HTML to Tailwind Conversion:** Parse HTML DOM, match elements to extracted LESS CSS rules, and generate Tailwind-compatible class suggestions.
 
-**Approach:** Waterfall stages with parallel work where possible; each stage fully tested before proceeding to next.
+**Total Estimated Timeline:** 8-10 weeks (6 weeks Part 1 + 2-4 weeks Part 2)
+
+**Approach:** Part 1 must complete fully before Part 2 begins. Part 2 depends on Part 1's rule storage and extraction.
 
 ---
 
-## Stage Overview
+## Updated Project Goals
+
+1. ✅ **Part 1:** Store LESS hierarchical structure and theme tokens in PostgreSQL
+2. ✅ **Part 1:** Export Tailwind configuration from extracted theme values
+3. 🆕 **Part 2:** Parse HTML DOM strings
+4. 🆕 **Part 2:** Match HTML elements to LESS CSS selectors
+5. 🆕 **Part 2:** Apply CSS cascade/specificity rules
+6. 🆕 **Part 2:** Generate Tailwind class suggestions for HTML elements
+
+---
+
+## PART 1: LESS Extraction (Weeks 1-6)
+
+### Stage Overview
 
 | # | Stage | Description | Testable Outcomes | Dependencies | Effort | Status |
 |---|-------|-------------|-------------------|--------------|--------|--------|
-| 1 | Database Foundation | PostgreSQL setup, schema creation, connection verification | Schema created, connection successful, all tables accessible | None | 1 week | ⏳ Ready |
-| 2 | LESS File Scanning | Discover and store LESS files from multiple paths | Find all .less files, store metadata, retrieve from DB | Stage 1 | 1 week | ⏳ Ready |
-| 3 | Import Hierarchy | Parse and resolve @import relationships | Map import graph, resolve paths, handle circular refs | Stage 2 | 1.5 weeks | ⏳ Ready |
-| 4 | Variable Extraction | Extract @variables and .mixins from LESS | Extract all variables, mixins, and parameters | Stage 2 | 1.5 weeks | ⏳ Ready |
-| 5 | Tailwind Export | Generate Tailwind config and CSS output | Valid tailwind.config.js, compiled CSS file | Stages 3, 4 | 1.5 weeks | ⏳ Ready |
-| 6 | Integration & Ops | Orchestrate pipeline, error handling, logging | End-to-end execution, all stages functioning | All stages | 1 week | ⏳ Ready |
+| 1 | Database Foundation | PostgreSQL setup, schema creation | All tables created, connection verified | None | 1 week | ⏳ Ready |
+| 2 | LESS File Scanning | Discover & store LESS files | All .less files found and stored | Stage 1 | 1 week | ⏳ Ready |
+| 3 | Import Hierarchy | Parse @import relationships | Import graph built, circular refs detected | Stage 2 | 1.5 weeks | ⏳ Ready |
+| 4 | Rule & Selector Extraction | Parse CSS rules and selectors ⭐ NEW | Selectors indexed, properties mapped | Stage 2 | 1.5 weeks | ⏳ New |
+| 5 | Variable Extraction | Extract @variables and .mixins | Variables stored, mixin params captured | Stages 3,4 | 1 week | ⏳ Modified |
+| 6 | Tailwind Export | Generate config from theme tokens | Valid tailwind.config.js created | Stages 4,5 | 1 week | ⏳ Modified |
+| 7 | Integration (Part 1) | Orchestrate full Part 1 pipeline | End-to-end execution, all stages working | All above | 0.5 week | ⏳ Modified |
+
+**Stage Reorganization Note:** Original Stage 4 (Variable Extraction) is now Stage 5. New Stage 4 extracts CSS rules and selectors (required for Part 2).
 
 ---
 
-## Dependency Graph
+## PART 2: HTML to Tailwind (Weeks 7-10)
+
+### Stage Overview
+
+| # | Stage | Description | Testable Outcomes | Dependencies | Effort | Status |
+|---|-------|-------------|-------------------|--------------|--------|--------|
+| 8 | HTML Parser | Parse HTML DOM strings | DOM parsed, elements identified, classes extracted | Part 1 complete | 1 week | 📝 Coming |
+| 9 | Selector Matching Engine | Match elements to LESS selectors | Selectors matched, specificity calculated | Stage 8 | 1.5 weeks | 📝 Coming |
+| 10 | CSS Cascade & Specificity | Apply cascade rules, resolve conflicts | Properties properly cascaded, specificity ranked | Stage 9 | 1 week | 📝 Coming |
+| 11 | Tailwind Mapping | Convert matched properties to Tailwind | Class suggestions generated, fallbacks provided | Stage 10 | 1 week | 📝 Coming |
+| 12 | Integration (Part 2) | Orchestrate HTML→Tailwind pipeline | End-to-end HTML parsing to Tailwind output | All above | 0.5 week | 📝 Coming |
+
+---
+
+## Updated Data Flow
 
 ```
-┌─────────────────────────────────────────────────────┐
-│  Stage 1: Database Foundation                       │
-│  (PostgreSQL connection, schema setup)              │
-└────────────────────┬────────────────────────────────┘
-                     │
-                     ▼
-        ┌────────────────────────────┐
-        │ Stage 2: LESS File Scanning │
-        │ (Find & store LESS files)   │
-        └────────┬───────────────────┘
-                 │
-        ┌────────┴───────────┐
-        │                    │
-        ▼                    ▼
-    ┌────────────┐    ┌─────────────────┐
-    │ Stage 3:   │    │ Stage 4:        │
-    │ Import     │    │ Variable        │
-    │ Hierarchy  │    │ Extraction      │
-    └────────────┘    └─────────────────┘
-        │                    │
-        └────────┬───────────┘
-                 │
-                 ▼
-    ┌────────────────────────────────┐
-    │ Stage 5: Tailwind Export       │
-    │ (Generate config & CSS)        │
-    └────────┬──────────────────────┘
-             │
-             ▼
-    ┌────────────────────────────────┐
-    │ Stage 6: Integration & Ops     │
-    │ (Full pipeline orchestration)  │
-    └────────────────────────────────┘
+┌─ PART 1: LESS Extraction ─────────────────────────────┐
+│                                                         │
+│  LESS Files                                             │
+│    ↓ (Stage 2)                                          │
+│  Scan & Store                                           │
+│    ↓ (Stage 3)                                          │
+│  Resolve Imports                                        │
+│    ↓ (Stage 4) ⭐ NEW                                   │
+│  Extract Selectors & Rules                             │
+│    ↓ (Stage 5)                                          │
+│  Extract Variables & Mixins                            │
+│    ↓                                                    │
+│  PostgreSQL: less_rules, less_variables                │
+│    ↓ (Stage 6)                                          │
+│  Export Tailwind Config                                │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+                       ↓
+                PostgreSQL Ready
+                       ↓
+┌─ PART 2: HTML→Tailwind ───────────────────────────────┐
+│                                                         │
+│  HTML DOM String (Stage 8) ⭐ NEW                      │
+│    ↓                                                    │
+│  Parse HTML → Elements with classes                    │
+│    ↓ (Stage 9)                                          │
+│  Match selectors from LESS rules                       │
+│    ↓ (Stage 10)                                         │
+│  Apply cascade/specificity rules                       │
+│    ↓ (Stage 11)                                         │
+│  Map properties to Tailwind classes                    │
+│    ↓                                                    │
+│  Output: HTML with Tailwind suggestions                │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
 ```
 
-**Critical Path:** 1 → 2 → (3, 4 in parallel) → 5 → 6
+---
+
+## Updated Database Schema
+
+### Part 1 Tables (Existing + Modified)
+
+- `less_files` - LESS files and metadata
+- `less_imports` - File dependencies
+- `less_rules` ⭐ **NEW** - CSS selectors and rule blocks (queryable)
+- `less_variables` - Variables and mixins
+- `theme_tokens` ⭐ **MODIFIED** - Extracted theme values (colors, spacing, fonts)
+- `tailwind_exports` - Generated Tailwind config
+
+### Part 2 Tables (New)
+
+- `selector_matches` ⭐ **NEW** - Cached selector→element matches
+- `element_styles` ⭐ **NEW** - Applied styles per HTML element (with cascade info)
+- `html_conversions` ⭐ **NEW** - Audit trail of HTML→Tailwind conversions
 
 ---
 
-## Cross-Cutting Concerns
+## Key Architectural Addition: Selector Matching Engine
 
-The following guidelines apply to **ALL stages** and are documented separately to maintain DRY principles:
+New core component to support Part 2:
 
-- **See [LOGGING_GUIDE.md](./LOGGING_GUIDE.md)** - Logging patterns, log levels, logger usage
-- **See [TESTING_GUIDE.md](./TESTING_GUIDE.md)** - Unit/integration tests, Jest configuration, coverage targets
-- **See [DATABASE_OPERATIONS.md](./DATABASE_OPERATIONS.md)** - Query patterns, transactions, connection handling
-- **See [ERROR_HANDLING.md](./ERROR_HANDLING.md)** - Error types, recovery strategies, validation
-- **See [CODE_STANDARDS.md](./CODE_STANDARDS.md)** - TypeScript strictness, naming, organization, interfaces
-- **See [ARCHITECTURE.md](./ARCHITECTURE.md)** - Module structure, responsibilities, data flow
+```
+SelectorMatchingEngine
+├── parseSelectors(lessRules) → IndexedSelectors
+├── matchElement(element, selectors) → MatchedRules[]
+├── calculateSpecificity(selector) → number
+├── applyCascade(rules) → FinalProperties
+└── generateTailwindClasses(properties) → string[]
+```
 
-Each stage document references these guides rather than duplicating content.
-
----
-
-## Stage Details
-
-### Stage 1: Database Foundation (1 week)
-**Existing Code:** `src/database/connection.ts`, `database/schema.sql`
-
-**Testable Outcomes:**
-- PostgreSQL connection established and verified
-- All 5 tables created with correct schema
-- Indexes and triggers functional
-- ENUM types (file_status, import_type) defined
-- Migrations run successfully
-
-**Key Activities:**
-- Finalize database connection module
-- Write connection unit tests
-- Create database reset/seed utilities
-- Document schema and table relationships
-
-**See:** [docs/stages/01_DATABASE_FOUNDATION.md](./stages/01_DATABASE_FOUNDATION.md)
+This engine:
+- Indexes all LESS selectors for fast lookup
+- Implements CSS cascade rules
+- Handles selector specificity
+- Maps final properties to Tailwind equivalents
 
 ---
 
-### Stage 2: LESS File Scanning (1 week)
-**Existing Code:** `src/services/lessService.ts` (partial)
+## Critical Implementation Notes
 
-**Testable Outcomes:**
-- Recursive directory scanning working
-- All .less files discovered from multiple paths
-- File metadata captured (name, size, path, checksum)
-- Files stored in database with status tracking
-- Query/retrieve files by path or status
+⚠️ **Blind spots to address:**
 
-**Key Activities:**
-- Complete file discovery logic
-- Implement checksum calculation
-- Build database storage layer
-- Create test LESS files for validation
-- Write integration tests
+1. **Pseudo-classes/elements** (`:hover`, `::before`) - Don't exist in static HTML, need strategy for how to handle
+2. **Media queries** - How do we resolve responsive rules? Include all? Assume desktop?
+3. **LESS guards & conditionals** - Rules with `when` conditions may not apply
+4. **Mixin argument variations** - Same mixin called with different arguments = different output
+5. **CSS cascade order matters** - File order + specificity determine final properties
+6. **Duplicate selectors** - Same selector appears multiple times, last wins (or does it?)
 
-**See:** [docs/stages/02_LESS_SCANNING.md](./stages/02_LESS_SCANNING.md)
+These must be addressed in Stage 4 design before implementation.
 
 ---
 
-### Stage 3: Import Hierarchy (1.5 weeks)
-**Existing Code:** `src/services/databaseService.ts` (partial resolveImports method)
+## Updated Stage 4 Specifics: Rule & Selector Extraction
 
-**Testable Outcomes:**
-- @import statements parsed from LESS files
-- Parent-child relationships stored in database
-- Import paths resolved to file IDs
-- Circular dependencies detected and handled
-- Import graph queryable for hierarchy display
+**New in Part 1 - Critical for Part 2**
 
-**Key Activities:**
-- Build import parser with regex patterns
-- Implement import path resolution
-- Add circular dependency detection
-- Create hierarchy query utilities
-- Test complex import scenarios
+### What's Changing
 
-**See:** [docs/stages/03_IMPORT_HIERARCHY.md](./stages/03_IMPORT_HIERARCHY.md)
+- Previous: Only extracted variables and mixins
+- Now: Must also extract CSS rule blocks with selectors
 
----
+### Requirements
 
-### Stage 4: Variable Extraction (1.5 weeks)
-**Existing Code:** `src/services/databaseService.ts` (partial extractVariables method)
+1. Parse all CSS selectors from LESS files (after variables expanded)
+2. Store selector strings in indexed, queryable format
+3. Map selector → properties mapping
+4. Handle LESS nesting (flatten to final selectors)
+5. Track selector specificity scores
+6. Store rule precedence (file order, specificity)
 
-**Testable Outcomes:**
-- LESS @variables extracted with values
-- Mixins (.mixin) identified with parameters
-- Variables/mixins linked to source files
-- Line numbers captured for reference
-- Variable lookup by name or file working
+### Database Table: `less_rules`
 
-**Key Activities:**
-- Enhance variable/mixin parsing patterns
-- Handle nested variables and references
-- Extract mixin parameters and signatures
-- Store extracted data with metadata
-- Create variable search/query utilities
+```sql
+CREATE TABLE less_rules (
+  id SERIAL PRIMARY KEY,
+  less_file_id INTEGER NOT NULL,
+  selector VARCHAR(1024) NOT NULL,
+  selector_specificity INTEGER, -- (ID count, class count, element count)
+  properties JSONB, -- {property: value}
+  line_number INTEGER,
+  rule_order INTEGER, -- File order for cascade
+  created_at TIMESTAMP,
+  FOREIGN KEY (less_file_id) REFERENCES less_files(id)
+);
 
-**See:** [docs/stages/04_VARIABLE_EXTRACTION.md](./stages/04_VARIABLE_EXTRACTION.md)
+CREATE INDEX idx_less_rules_selector ON less_rules(selector);
+CREATE INDEX idx_less_rules_file ON less_rules(less_file_id);
+```
 
 ---
 
-### Stage 5: Tailwind Export (1.5 weeks)
-**Existing Code:** `src/services/exportService.ts` (partial)
+## Updated Dependency Graph
 
-**Testable Outcomes:**
-- Valid `tailwind.config.js` generated
-- Colors, spacing, typography mapped from LESS variables
-- CSS custom properties file created
-- Theme extension configuration output
-- Export path and versioning tracked in database
-
-**Key Activities:**
-- Map LESS variable patterns to Tailwind themes
-- Build configuration generator
-- Implement CSS output formatting
-- Handle variable transformations
-- Test with real Tailwind projects
-
-**See:** [docs/stages/05_TAILWIND_EXPORT.md](./stages/05_TAILWIND_EXPORT.md)
-
----
-
-### Stage 6: Integration & Operations (1 week)
-**Existing Code:** `src/index.ts` (partial orchestration)
-
-**Testable Outcomes:**
-- Full pipeline executes end-to-end
-- Error handling prevents crashes
-- Logging tracks execution flow
-- Performance within acceptable limits
-- CLI/programmatic usage both supported
-
-**Key Activities:**
-- Complete main orchestration logic
-- Add comprehensive error recovery
-- Implement progress tracking/reporting
-- Add CLI argument parsing
-- Performance optimization and profiling
-- End-to-end integration tests
-
-**See:** [docs/stages/06_INTEGRATION.md](./stages/06_INTEGRATION.md)
+```
+Stage 1 (DB)
+    ↓
+Stage 2 (Scan)
+    ↓
+Stage 3 (Imports)
+    ↓
+Stage 4 (Rules) ⭐ NEW - CRITICAL DEPENDENCY
+    ├──→ Stage 5 (Variables)
+    └──→ Part 2 stages depend on this
+    
+Stage 5 (Variables)
+    ├──→ Stage 6 (Export Part 1)
+    
+Stage 6 (Export Part 1)
+    ↓
+Stage 7 (Integrate Part 1)
+    ↓ (Gates Part 2)
+    
+Stage 8 (HTML Parser) ⭐ NEW
+    ↓
+Stage 9 (Selector Matching) ⭐ NEW - Uses Stage 4 rules
+    ↓
+Stage 10 (Cascade)
+    ↓
+Stage 11 (Tailwind Mapping)
+    ↓
+Stage 12 (Integrate Part 2)
+```
 
 ---
 
-## Acceptance Criteria - All Stages
+## Acceptance Criteria - Part 1 Unchanged
 
-For each stage to be considered **COMPLETE**, the following must be satisfied:
-
-✅ **Code**
-- All functions implemented per specification
-- TypeScript compiles with zero errors (strict mode)
-- No code linting errors (ESLint rules pass)
-
-✅ **Testing**
-- Unit tests written for all new functions
-- Integration tests verify database operations
-- Edge cases and error paths tested
-- Code coverage ≥ 80%
-- All tests pass locally and in CI
-
-✅ **Documentation**
-- Code comments explain non-obvious logic
-- Function signatures documented with JSDoc
-- Inline examples for complex functions
-- README updated for new features
-
-✅ **Logging & Debugging**
-- Entry/exit points logged at INFO level
-- Errors logged with full context
-- Debug logs available for troubleshooting
-- No console.log() statements (use logger)
-
-✅ **Database Integrity**
-- Queries use parameterized statements
-- Transactions properly scoped
-- Rollback tested on failures
-- No SQL injection vulnerabilities
-
----
-
-## Risk Assessment
-
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|-----------|
-| Complex LESS import chains | Medium | High | Stage 3 includes circular dependency detection; test with real projects early |
-| Performance with large files | Medium | Medium | Stage 2 includes performance testing; optimize queries in Stage 5 |
-| Tailwind mapping ambiguity | Low | High | Create mapping documentation; test with multiple LESS projects |
-| Database schema changes mid-project | Low | High | Finalize schema in Stage 1; use migrations for any changes |
-| Missing LESS features | Medium | Medium | Stage 4 extensible design; add parser improvements as needed |
-
----
-
-## Quality Gates
-
-Progress from one stage to the next requires:
-
-1. ✅ All acceptance criteria met
-2. ✅ Code review approval from lead developer
-3. ✅ All tests passing
-4. ✅ Performance benchmarks met (if applicable)
-5. ✅ Documentation complete and reviewed
+Part 1 stages maintain original acceptance criteria. Part 2 stages will have specific acceptance criteria (documented when stages begin).
 
 ---
 
 ## Timeline Visualization
 
 ```
-Week 1:    [═══ Stage 1 ═══]
-Week 2:                   [═══ Stage 2 ═══]
-Week 3:                               [═ Stage 3 ═][═ Stage 4 ═]
-Week 4:                                    [════ Stages 3/4 (parallel) ════]
-Week 5:                                                        [═ Stage 5 ═]
-Week 6:                                                              [═ Stage 6 ═]
+Week 1:    [══ Stage 1: DB ══]
+Week 2:                   [══ Stage 2: Scan ══]
+Week 3:                               [═ Stage 3 ═][═ Stage 4* ═]
+Week 4:                        [════ Stages 3,4,5 (parallel start) ════]
+Week 5:                                              [═ Stage 5 ═][═ Stage 6 ═]
+Week 6:                                                    [═ Stage 6 ═][S7]
+                                                                      ↓
+Week 7:    [═ Stage 8: HTML Parser ═]
+Week 8:                   [═ Stage 9: Selector Matching ═]
+Week 9:                               [═ Stage 10: Cascade ═]
+Week 10:                                     [═ Stage 11: Tailwind ═][S12]
+
+* = New stage in Part 1
 ```
 
 ---
 
-## How to Use This Roadmap
+## Part 2 API Concept (Preview)
 
-1. **Getting Started:** Read [ARCHITECTURE.md](./ARCHITECTURE.md) to understand the system design
-2. **Current Stage:** Navigate to the stage-specific document in `docs/stages/`
-3. **Standards & Patterns:** Reference the generic guides for common practices
-4. **Implementation:** Follow stage document step-by-step for that phase
-5. **Testing:** Use [TESTING_GUIDE.md](./TESTING_GUIDE.md) for test structure
-6. **Troubleshooting:** Check [ERROR_HANDLING.md](./ERROR_HANDLING.md) for solutions
+```typescript
+// Input: HTML string
+const htmlInput = `
+  <div class="asc-about-header">
+    <h1>About Us</h1>
+  </div>
+`;
 
----
+// Process: Match to LESS rules and convert
+const converter = new HtmlToTailwindConverter(lessDatabase);
+const result = await converter.convert(htmlInput);
 
-## Document Index
-
-### Generic Guides (Apply to All Stages)
-- [CODE_STANDARDS.md](./CODE_STANDARDS.md) - TypeScript, naming, organization
-- [TESTING_GUIDE.md](./TESTING_GUIDE.md) - Test structure, Jest setup, coverage
-- [LOGGING_GUIDE.md](./LOGGING_GUIDE.md) - Logger usage, log levels
-- [ERROR_HANDLING.md](./ERROR_HANDLING.md) - Error strategies, custom errors
-- [DATABASE_OPERATIONS.md](./DATABASE_OPERATIONS.md) - Query patterns, transactions
-- [ARCHITECTURE.md](./ARCHITECTURE.md) - System design, module responsibilities
-
-### Stage-Specific Guides
-- [Stage 1: Database Foundation](./stages/01_DATABASE_FOUNDATION.md)
-- [Stage 2: LESS File Scanning](./stages/02_LESS_SCANNING.md)
-- [Stage 3: Import Hierarchy](./stages/03_IMPORT_HIERARCHY.md)
-- [Stage 4: Variable Extraction](./stages/04_VARIABLE_EXTRACTION.md)
-- [Stage 5: Tailwind Export](./stages/05_TAILWIND_EXPORT.md)
-- [Stage 6: Integration & Operations](./stages/06_INTEGRATION.md)
-
-### API Reference
-- [API_REFERENCE.md](./API_REFERENCE.md) - Complete API documentation
+// Output: HTML with Tailwind suggestions
+{
+  html: '<div class="text-lg font-bold text-gray-900">...</div>',
+  mappings: [
+    {
+      selector: '.asc-about-header',
+      originalProperties: { 'font-size': '12px', ... },
+      tailwindClasses: ['text-lg', 'font-bold', ...],
+      confidence: 0.92
+    }
+  ]
+}
+```
 
 ---
 
-## Contact & Questions
+## Document Updates Needed
 
-For questions about the roadmap or specific stages, refer to the appropriate stage document or contact the project lead.
+- ✅ PROJECT_ROADMAP.md (this file - updated)
+- 📝 ARCHITECTURE.md - Add Part 2 architecture, selector matching engine
+- 📝 DATABASE_OPERATIONS.md - Add less_rules queries
+- 📝 Stage 4 guide - NEW: Rule & Selector Extraction
+- 📝 Stage 8 guide - NEW: HTML Parser
+- 📝 Stage 9 guide - NEW: Selector Matching Engine
+- 📝 Stage 10 guide - NEW: CSS Cascade & Specificity
+- 📝 Stage 11 guide - NEW: Tailwind Mapping
 
-**Last Updated:** October 29, 2025  
-**Version:** 1.0
+---
+
+**Next Step:** Begin Stage 1 with updated understanding that Stage 4 requires selector extraction (not in original plan).
+
+---
+
+**Document Version:** 2.0 (Updated for Part 2)  
+**Last Updated:** October 29, 2025
