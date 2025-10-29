@@ -1,75 +1,87 @@
-FROM node:20-alpine
+# Dockerfile for LESS to Tailwind Parser Development Environment
+# Multi-stage build with development tools, Claude Code, and MCPs
 
-# Set working directory
-WORKDIR /workspace
+FROM node:22-alpine as base
 
-# Install system dependencies for MCPs and development
+# Install system dependencies
 RUN apk add --no-cache \
     git \
-    postgresql-client \
-    python3 \
-    py3-pip \
-    bash \
     curl \
-    jq \
-    build-essential \
-    python3-dev
+    bash \
+    vim \
+    nano \
+    openssh-client \
+    ca-certificates \
+    python3 \
+    make \
+    g++ \
+    postgresql-client \
+    jq
 
-# Install Node.js global tools
+# Set up development environment
+WORKDIR /workspace
+
+# Install Claude Code CLI globally
+RUN npm install -g @anthropic-ai/claude-code
+
+# Install MCP servers globally
+# 1. Postgres MCP - for database operations
+RUN npm install -g @modelcontextprotocol/server-postgres
+
+# 2. Git MCP - for git operations
+RUN npm install -g @modelcontextprotocol/server-git
+
+# 3. Filesystem MCP - for file operations in /workspace
+RUN npm install -g @modelcontextprotocol/server-filesystem
+
+# 4. Sequential Thinking MCP - for structured reasoning
+RUN npm install -g @modelcontextprotocol/server-sequentialthinking
+
+# Install useful global npm packages for development
 RUN npm install -g \
-    @anthropic-ai/sdk \
     typescript \
     ts-node \
-    pm2
+    nodemon \
+    eslint \
+    prettier \
+    jest \
+    @types/node \
+    dotenv-cli \
+    npm-check-updates
 
-# Create MCP server directory
-RUN mkdir -p /mcp/servers
+# Create stage worktree directories
+RUN mkdir -p /workspace/stages
 
-# Install MCP Servers
-# 1. PostgreSQL MCP Server
-RUN npm install -g @modelcontextprotocol/server-postgres@latest
+# Create MCP config directory
+RUN mkdir -p /root/.claude
 
-# 2. Git MCP Server
-RUN npm install -g @modelcontextprotocol/server-git@latest
-
-# 3. Filesystem MCP Server
-RUN npm install -g @modelcontextprotocol/server-filesystem@latest
-
-# 4. Sequential Thinking support (via Claude extensions)
-RUN npm install -g @anthropic-ai/thinking-toolkit@latest || true
-
-# Copy MCP configuration
-COPY .mcp-config.json /root/.mcp-config.json
-COPY mcp-servers.json /mcp/servers.json
-
-# Create initialization script
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
-
-# Copy application files
+# Copy package files
 COPY package*.json ./
-RUN npm ci
 
-# Copy source code
-COPY . .
+# Install project dependencies
+RUN npm ci
 
 # Build the project
 RUN npm run build
 
-# Expose ports for MCP servers
-EXPOSE 3000 5432 9000-9010
+# Copy MCP configuration
+COPY claude-mcp-config.json /root/.claude/config.json
 
 # Set environment variables
-ENV NODE_ENV=production
-ENV MCP_CONFIG_PATH=/root/.mcp-config.json
-ENV WORKSPACE=/workspace
-ENV DATABASE_URL=postgresql://localhost/less_to_tailwind
-ENV PATH="/mcp/bin:${PATH}"
+ENV NODE_ENV=development
+ENV PATH=/workspace/node_modules/.bin:$PATH
+ENV CLAUDE_MCP_SERVERS=/root/.claude/config.json
+
+# Default shell
+SHELL ["/bin/bash", "-c"]
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD npm run health || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD npm run build 2>/dev/null && echo "healthy" || exit 1
 
-# Run entrypoint
-ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["npm", "start"]
+# Entry point
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["/bin/bash"]
