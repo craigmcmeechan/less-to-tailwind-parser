@@ -1,281 +1,157 @@
-# PROJECT ROADMAP: LESS to Tailwind Parser (UPDATED)
+# PROJECT ROADMAP: LESS to Tailwind Parser (REVISED PART 2)
 
 ## Executive Summary
 
-**Updated Scope:** This is now a TWO-PART system:
+**Two-Part System with Simplified Part 2:**
 
-**Part 1 - LESS CSS Extraction:** Transform LESS CSS files from multiple source directories into a hierarchically-structured PostgreSQL database with extracted theme tokens.
+**Part 1 - LESS CSS Extraction (Weeks 1-6):** Transform LESS CSS files into PostgreSQL with extracted theme tokens and CSS rule selectors.
 
-**Part 2 - HTML to Tailwind Conversion:** Parse HTML DOM, match elements to extracted LESS CSS rules, and generate Tailwind-compatible class suggestions.
+**Part 2 - Chrome Extension → Tailwind (Weeks 7-8):** Simple extension captures DOM elements → backend matches to LESS rules → generates Tailwind classes.
 
-**Total Estimated Timeline:** 8-10 weeks (6 weeks Part 1 + 2-4 weeks Part 2)
+**Total Estimated Timeline:** 8-9 weeks
 
-**Approach:** Part 1 must complete fully before Part 2 begins. Part 2 depends on Part 1's rule storage and extraction.
+**Key Change:** Leveraging browser's cascade resolution (Chrome DevTools) instead of building cascade logic.
 
 ---
 
 ## Updated Project Goals
 
-1. ✅ **Part 1:** Store LESS hierarchical structure and theme tokens in PostgreSQL
-2. ✅ **Part 1:** Export Tailwind configuration from extracted theme values
-3. 🆕 **Part 2:** Parse HTML DOM strings
-4. 🆕 **Part 2:** Match HTML elements to LESS CSS selectors
-5. 🆕 **Part 2:** Apply CSS cascade/specificity rules
-6. 🆕 **Part 2:** Generate Tailwind class suggestions for HTML elements
+### Part 1: LESS Extraction
+1. ✅ Store LESS hierarchical structure in PostgreSQL
+2. ✅ Extract CSS selectors and rule blocks
+3. ✅ Extract variables and mixins
+4. ✅ Export Tailwind configuration from theme tokens
+
+### Part 2: DOM Capture → Tailwind (Simplified)
+1. 🆕 Chrome extension for element selection
+2. 🆕 Capture DOM subtree with computed styles
+3. 🆕 Backend matches elements to LESS rules
+4. 🆕 Generate Tailwind suggestions per element
 
 ---
 
-## PART 1: LESS Extraction (Weeks 1-6)
+## PART 1: LESS Extraction (Unchanged)
 
-### Stage Overview
+### Stages 1-7: LESS to Database
 
-| # | Stage | Description | Testable Outcomes | Dependencies | Effort | Status |
-|---|-------|-------------|-------------------|--------------|--------|--------|
-| 1 | Database Foundation | PostgreSQL setup, schema creation | All tables created, connection verified | None | 1 week | ⏳ Ready |
-| 2 | LESS File Scanning | Discover & store LESS files | All .less files found and stored | Stage 1 | 1 week | ⏳ Ready |
-| 3 | Import Hierarchy | Parse @import relationships | Import graph built, circular refs detected | Stage 2 | 1.5 weeks | ⏳ Ready |
-| 4 | Rule & Selector Extraction | Parse CSS rules and selectors ⭐ NEW | Selectors indexed, properties mapped | Stage 2 | 1.5 weeks | ⏳ New |
-| 5 | Variable Extraction | Extract @variables and .mixins | Variables stored, mixin params captured | Stages 3,4 | 1 week | ⏳ Modified |
-| 6 | Tailwind Export | Generate config from theme tokens | Valid tailwind.config.js created | Stages 4,5 | 1 week | ⏳ Modified |
-| 7 | Integration (Part 1) | Orchestrate full Part 1 pipeline | End-to-end execution, all stages working | All above | 0.5 week | ⏳ Modified |
+| Stage | Name | Description | Duration |
+|-------|------|-------------|----------|
+| 1 | Database Foundation | PostgreSQL setup | 1 week |
+| 2 | LESS File Scanning | Discover & store files | 1 week |
+| 3 | Import Hierarchy | Parse @import relationships | 1.5 weeks |
+| 4 | Rule Extraction | Extract CSS selectors & rules | 1.5 weeks |
+| 5 | Variable Extraction | Extract @variables & mixins | 1 week |
+| 6 | Tailwind Export | Generate config | 1 week |
+| 7 | Integration (Part 1) | Full pipeline | 0.5 week |
 
-**Stage Reorganization Note:** Original Stage 4 (Variable Extraction) is now Stage 5. New Stage 4 extracts CSS rules and selectors (required for Part 2).
-
----
-
-## PART 2: HTML to Tailwind (Weeks 7-10)
-
-### Stage Overview
-
-| # | Stage | Description | Testable Outcomes | Dependencies | Effort | Status |
-|---|-------|-------------|-------------------|--------------|--------|--------|
-| 8 | HTML Parser | Parse HTML DOM strings | DOM parsed, elements identified, classes extracted | Part 1 complete | 1 week | 📝 Coming |
-| 9 | Selector Matching Engine | Match elements to LESS selectors | Selectors matched, specificity calculated | Stage 8 | 1.5 weeks | 📝 Coming |
-| 10 | CSS Cascade & Specificity | Apply cascade rules, resolve conflicts | Properties properly cascaded, specificity ranked | Stage 9 | 1 week | 📝 Coming |
-| 11 | Tailwind Mapping | Convert matched properties to Tailwind | Class suggestions generated, fallbacks provided | Stage 10 | 1 week | 📝 Coming |
-| 12 | Integration (Part 2) | Orchestrate HTML→Tailwind pipeline | End-to-end HTML parsing to Tailwind output | All above | 0.5 week | 📝 Coming |
+**Part 1 Complete:** End of Week 6
 
 ---
 
-## Updated Data Flow
+## PART 2: DOM Capture → Tailwind (Simplified)
 
-```
-┌─ PART 1: LESS Extraction ─────────────────────────────┐
-│                                                         │
-│  LESS Files                                             │
-│    ↓ (Stage 2)                                          │
-│  Scan & Store                                           │
-│    ↓ (Stage 3)                                          │
-│  Resolve Imports                                        │
-│    ↓ (Stage 4) ⭐ NEW                                   │
-│  Extract Selectors & Rules                             │
-│    ↓ (Stage 5)                                          │
-│  Extract Variables & Mixins                            │
-│    ↓                                                    │
-│  PostgreSQL: less_rules, less_variables                │
-│    ↓ (Stage 6)                                          │
-│  Export Tailwind Config                                │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-                       ↓
-                PostgreSQL Ready
-                       ↓
-┌─ PART 2: HTML→Tailwind ───────────────────────────────┐
-│                                                         │
-│  HTML DOM String (Stage 8) ⭐ NEW                      │
-│    ↓                                                    │
-│  Parse HTML → Elements with classes                    │
-│    ↓ (Stage 9)                                          │
-│  Match selectors from LESS rules                       │
-│    ↓ (Stage 10)                                         │
-│  Apply cascade/specificity rules                       │
-│    ↓ (Stage 11)                                         │
-│  Map properties to Tailwind classes                    │
-│    ↓                                                    │
-│  Output: HTML with Tailwind suggestions                │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-```
+### Stage 8: Chrome Extension for DOM Capture
 
----
+**Duration:** 1 week  
+**Dependency:** Part 1 complete (for context, not required)
 
-## Updated Database Schema
+**Purpose:** Allow users to select HTML elements on any webpage and capture their DOM structure + computed styles.
 
-### Part 1 Tables (Existing + Modified)
+**Deliverable:** Chrome extension (.zip) with:
+- Element picker/selection UI
+- DOM tree capture with computed styles
+- Post to backend web service
 
-- `less_files` - LESS files and metadata
-- `less_imports` - File dependencies
-- `less_rules` ⭐ **NEW** - CSS selectors and rule blocks (queryable)
-- `less_variables` - Variables and mixins
-- `theme_tokens` ⭐ **MODIFIED** - Extracted theme values (colors, spacing, fonts)
-- `tailwind_exports` - Generated Tailwind config
+**What Extension Does:**
+1. User clicks extension icon
+2. Extension enters selection mode (element highlighting)
+3. User clicks element
+4. Extension captures:
+   - Full subtree (element + all children)
+   - Computed CSS for each node
+   - Element metadata (tag, classes, IDs, attributes)
+5. Sends JSON payload to backend
 
-### Part 2 Tables (New)
+**What Extension Does NOT Do:**
+- Match selectors
+- Generate Tailwind
+- Store data
+- Understand LESS
 
-- `selector_matches` ⭐ **NEW** - Cached selector→element matches
-- `element_styles` ⭐ **NEW** - Applied styles per HTML element (with cascade info)
-- `html_conversions` ⭐ **NEW** - Audit trail of HTML→Tailwind conversions
-
----
-
-## Key Architectural Addition: Selector Matching Engine
-
-New core component to support Part 2:
-
-```
-SelectorMatchingEngine
-├── parseSelectors(lessRules) → IndexedSelectors
-├── matchElement(element, selectors) → MatchedRules[]
-├── calculateSpecificity(selector) → number
-├── applyCascade(rules) → FinalProperties
-└── generateTailwindClasses(properties) → string[]
-```
-
-This engine:
-- Indexes all LESS selectors for fast lookup
-- Implements CSS cascade rules
-- Handles selector specificity
-- Maps final properties to Tailwind equivalents
-
----
-
-## Critical Implementation Notes
-
-⚠️ **Blind spots to address:**
-
-1. **Pseudo-classes/elements** (`:hover`, `::before`) - Don't exist in static HTML, need strategy for how to handle
-2. **Media queries** - How do we resolve responsive rules? Include all? Assume desktop?
-3. **LESS guards & conditionals** - Rules with `when` conditions may not apply
-4. **Mixin argument variations** - Same mixin called with different arguments = different output
-5. **CSS cascade order matters** - File order + specificity determine final properties
-6. **Duplicate selectors** - Same selector appears multiple times, last wins (or does it?)
-
-These must be addressed in Stage 4 design before implementation.
-
----
-
-## Updated Stage 4 Specifics: Rule & Selector Extraction
-
-**New in Part 1 - Critical for Part 2**
-
-### What's Changing
-
-- Previous: Only extracted variables and mixins
-- Now: Must also extract CSS rule blocks with selectors
-
-### Requirements
-
-1. Parse all CSS selectors from LESS files (after variables expanded)
-2. Store selector strings in indexed, queryable format
-3. Map selector → properties mapping
-4. Handle LESS nesting (flatten to final selectors)
-5. Track selector specificity scores
-6. Store rule precedence (file order, specificity)
-
-### Database Table: `less_rules`
-
-```sql
-CREATE TABLE less_rules (
-  id SERIAL PRIMARY KEY,
-  less_file_id INTEGER NOT NULL,
-  selector VARCHAR(1024) NOT NULL,
-  selector_specificity INTEGER, -- (ID count, class count, element count)
-  properties JSONB, -- {property: value}
-  line_number INTEGER,
-  rule_order INTEGER, -- File order for cascade
-  created_at TIMESTAMP,
-  FOREIGN KEY (less_file_id) REFERENCES less_files(id)
-);
-
-CREATE INDEX idx_less_rules_selector ON less_rules(selector);
-CREATE INDEX idx_less_rules_file ON less_rules(less_file_id);
-```
-
----
-
-## Updated Dependency Graph
-
-```
-Stage 1 (DB)
-    ↓
-Stage 2 (Scan)
-    ↓
-Stage 3 (Imports)
-    ↓
-Stage 4 (Rules) ⭐ NEW - CRITICAL DEPENDENCY
-    ├──→ Stage 5 (Variables)
-    └──→ Part 2 stages depend on this
-    
-Stage 5 (Variables)
-    ├──→ Stage 6 (Export Part 1)
-    
-Stage 6 (Export Part 1)
-    ↓
-Stage 7 (Integrate Part 1)
-    ↓ (Gates Part 2)
-    
-Stage 8 (HTML Parser) ⭐ NEW
-    ↓
-Stage 9 (Selector Matching) ⭐ NEW - Uses Stage 4 rules
-    ↓
-Stage 10 (Cascade)
-    ↓
-Stage 11 (Tailwind Mapping)
-    ↓
-Stage 12 (Integrate Part 2)
-```
-
----
-
-## Acceptance Criteria - Part 1 Unchanged
-
-Part 1 stages maintain original acceptance criteria. Part 2 stages will have specific acceptance criteria (documented when stages begin).
-
----
-
-## Timeline Visualization
-
-```
-Week 1:    [══ Stage 1: DB ══]
-Week 2:                   [══ Stage 2: Scan ══]
-Week 3:                               [═ Stage 3 ═][═ Stage 4* ═]
-Week 4:                        [════ Stages 3,4,5 (parallel start) ════]
-Week 5:                                              [═ Stage 5 ═][═ Stage 6 ═]
-Week 6:                                                    [═ Stage 6 ═][S7]
-                                                                      ↓
-Week 7:    [═ Stage 8: HTML Parser ═]
-Week 8:                   [═ Stage 9: Selector Matching ═]
-Week 9:                               [═ Stage 10: Cascade ═]
-Week 10:                                     [═ Stage 11: Tailwind ═][S12]
-
-* = New stage in Part 1
-```
-
----
-
-## Part 2 API Concept (Preview)
-
-```typescript
-// Input: HTML string
-const htmlInput = `
-  <div class="asc-about-header">
-    <h1>About Us</h1>
-  </div>
-`;
-
-// Process: Match to LESS rules and convert
-const converter = new HtmlToTailwindConverter(lessDatabase);
-const result = await converter.convert(htmlInput);
-
-// Output: HTML with Tailwind suggestions
+**Output Payload Example:**
+```json
 {
-  html: '<div class="text-lg font-bold text-gray-900">...</div>',
-  mappings: [
+  "url": "https://example.com/page",
+  "timestamp": "2025-10-29T14:00:00Z",
+  "viewport": { "width": 1920, "height": 1080 },
+  "selectedElement": {
+    "id": "elem-1",
+    "tag": "div",
+    "classes": ["asc-about-header"],
+    "attributes": {"data-id": "123"},
+    "computedStyles": {
+      "font-size": "12px",
+      "color": "#333333",
+      "margin": "0px 30px",
+      "font-weight": "bold"
+    },
+    "children": [
+      {
+        "id": "elem-2",
+        "tag": "h1",
+        "computedStyles": { ... }
+      }
+    ]
+  }
+}
+```
+
+---
+
+### Stage 9: Backend DOM Matching & Tailwind Generation
+
+**Duration:** 1 week  
+**Dependency:** Stage 8 complete + Part 1 database
+
+**Purpose:** Receive captured DOM elements, match to LESS rules, generate Tailwind suggestions.
+
+**Inputs:**
+- DOM tree JSON from extension
+- Part 1 database (`less_rules`, `theme_tokens`)
+
+**Processing:**
+1. Store DOM hierarchy in database (relational structure)
+2. For each element in tree:
+   - Query `less_rules` matching element's classes
+   - Compare computed styles to rule properties
+   - Map matched properties to `theme_tokens`
+   - Generate Tailwind classes with confidence scores
+3. Return mapping with suggestions
+
+**Output:**
+```json
+{
+  "captureId": "uuid",
+  "url": "https://example.com/page",
+  "elements": [
     {
-      selector: '.asc-about-header',
-      originalProperties: { 'font-size': '12px', ... },
-      tailwindClasses: ['text-lg', 'font-bold', ...],
-      confidence: 0.92
+      "domId": "elem-1",
+      "tag": "div",
+      "classes": ["asc-about-header"],
+      "computedStyles": { "font-size": "12px", ... },
+      "matchedRules": [
+        {
+          "lessRuleId": 42,
+          "lessSelector": ".asc-about-header",
+          "confidence": 0.95,
+          "properties": {
+            "font-size": { "value": "12px", "tailwindClass": "text-xs" },
+            "color": { "value": "#333333", "tailwindClass": "text-gray-700" }
+          }
+        }
+      ],
+      "suggestedTailwind": ["text-xs", "text-gray-700", "font-bold"],
+      "children": [...]
     }
   ]
 }
@@ -283,22 +159,247 @@ const result = await converter.convert(htmlInput);
 
 ---
 
-## Document Updates Needed
+## Part 2 Architecture (Simplified)
 
-- ✅ PROJECT_ROADMAP.md (this file - updated)
-- 📝 ARCHITECTURE.md - Add Part 2 architecture, selector matching engine
-- 📝 DATABASE_OPERATIONS.md - Add less_rules queries
-- 📝 Stage 4 guide - NEW: Rule & Selector Extraction
-- 📝 Stage 8 guide - NEW: HTML Parser
-- 📝 Stage 9 guide - NEW: Selector Matching Engine
-- 📝 Stage 10 guide - NEW: CSS Cascade & Specificity
-- 📝 Stage 11 guide - NEW: Tailwind Mapping
+```
+Chrome Extension                Backend Service
+    ↓                                ↓
+Element Picker           Stage 9: Matcher
+    ↓                                ↓
+DOM Tree Capture        Query less_rules
+    ↓                                ↓
+Computed Styles         Match elements
+    ↓                                ↓
+POST JSON ─────────────→ Store capture
+                         ↓
+                    Generate Tailwind
+                         ↓
+                    Return suggestions
+```
 
 ---
 
-**Next Step:** Begin Stage 1 with updated understanding that Stage 4 requires selector extraction (not in original plan).
+## Part 2 Database Schema
+
+### New Tables
+
+#### `captured_elements` (Hierarchical DOM)
+
+```sql
+CREATE TABLE captured_elements (
+  id UUID PRIMARY KEY,
+  capture_id UUID NOT NULL, -- Groups elements from single capture
+  parent_id UUID,           -- For hierarchy
+  url VARCHAR(2048),
+  tag VARCHAR(50),
+  classes TEXT[],
+  ids TEXT[],
+  attributes JSONB,
+  computed_styles JSONB,    -- From browser DevTools
+  created_at TIMESTAMP,
+  FOREIGN KEY (parent_id) REFERENCES captured_elements(id),
+  FOREIGN KEY (capture_id) REFERENCES element_captures(id)
+);
+
+CREATE INDEX idx_captured_parent ON captured_elements(parent_id);
+CREATE INDEX idx_captured_url ON captured_elements(url);
+CREATE INDEX idx_captured_classes ON captured_elements USING GIN(classes);
+```
+
+#### `element_captures` (Metadata)
+
+```sql
+CREATE TABLE element_captures (
+  id UUID PRIMARY KEY,
+  url VARCHAR(2048),
+  viewport_width INTEGER,
+  viewport_height INTEGER,
+  extension_version VARCHAR(20),
+  created_at TIMESTAMP
+);
+
+CREATE INDEX idx_captures_url ON element_captures(url);
+CREATE INDEX idx_captures_date ON element_captures(created_at);
+```
+
+#### `element_rule_matches` (Capture→LESS Mapping)
+
+```sql
+CREATE TABLE element_rule_matches (
+  id SERIAL PRIMARY KEY,
+  element_id UUID NOT NULL,
+  less_rule_id INTEGER NOT NULL,
+  selector VARCHAR(1024),
+  confidence DECIMAL(3,2),
+  matched_properties JSONB,
+  tailwind_classes TEXT[],
+  created_at TIMESTAMP,
+  FOREIGN KEY (element_id) REFERENCES captured_elements(id),
+  FOREIGN KEY (less_rule_id) REFERENCES less_rules(id)
+);
+
+CREATE INDEX idx_matches_element ON element_rule_matches(element_id);
+CREATE INDEX idx_matches_rule ON element_rule_matches(less_rule_id);
+```
 
 ---
 
-**Document Version:** 2.0 (Updated for Part 2)  
+## Stage 8: Chrome Extension Detailed
+
+### Deliverables
+
+1. **manifest.json** - Extension config
+2. **popup.html/js** - Extension UI (picker mode toggle)
+3. **content-script.js** - Page interaction (element selection)
+4. **background.js** - Communication with backend
+5. **README** - Installation & usage instructions
+
+### Tech Stack
+
+- Vanilla JavaScript (no framework)
+- Chrome Extension APIs
+- Fetch API for backend communication
+
+### Core Functions
+
+```javascript
+// Element selection
+function startElementPicker() { }
+function captureElement(element) { }
+function buildDomTree(element) { }
+function getComputedStyles(element) { }
+
+// Communication
+function postToBackend(payload) { }
+function handleResponse(response) { }
+```
+
+### User Flow
+
+1. Visit any webpage
+2. Click extension icon
+3. Click "Capture Element"
+4. Hover over elements (highlights)
+5. Click element to capture
+6. Extension shows "Captured & sent"
+7. User returns to backend to view results
+
+---
+
+## Stage 9: Backend Matching Engine
+
+### Deliverables
+
+1. **Web Service Endpoint:** `POST /api/capture` - Receive DOM from extension
+2. **Matching Service:** Query `less_rules`, match elements
+3. **Tailwind Generator:** Convert matched properties to classes
+4. **Results Endpoint:** `GET /api/capture/:id` - Retrieve suggestions
+
+### Workflow
+
+```
+POST /api/capture {domTree, url, viewport}
+    ↓
+1. Store capture metadata
+    ↓
+2. Store element hierarchy
+    ↓
+3. For each element:
+    - Query less_rules by classes
+    - Compare computed_styles to rule properties
+    - Calculate confidence
+    - Map to theme_tokens → Tailwind
+    - Store matches
+    ↓
+4. Return capture ID
+    ↓
+GET /api/capture/:id
+    ↓
+Return element tree with suggestions
+```
+
+### Matching Logic
+
+**Input:** DOM element with computed styles + classes  
+**Process:**
+1. Find `less_rules` where selector contains element's classes
+2. For each matched rule:
+   - Compare rule properties to element's computed styles
+   - Calculate confidence (% of properties matching)
+   - Extract matched properties
+   - Query `theme_tokens` for each property
+   - Find Tailwind equivalents
+3. Sort matches by confidence (highest first)
+4. Return top matches
+
+**Example:**
+
+```
+Element: <div class="asc-about-header">
+Computed: { "font-size": "12px", "color": "#333333", "font-weight": "bold" }
+
+Query less_rules: WHERE classes CONTAINS "asc-about-header"
+Results: [Rule#42 with .asc-about-header selector]
+
+Rule#42 Properties: 
+  - font-size: 12px ✓ MATCH
+  - color: @text-normal → #333333 ✓ MATCH
+  - font-weight: bold ✓ MATCH
+  - margin: 0 30px ✗ NO MATCH
+
+Confidence: 3/4 = 0.75
+
+Theme tokens:
+  - "12px" → "text-xs"
+  - "#333333" → "text-gray-700"
+  - "bold" → "font-bold"
+
+Tailwind output: ["text-xs", "text-gray-700", "font-bold"]
+```
+
+---
+
+## Part 2 Simplified Benefits
+
+✅ **No cascade logic needed** - Browser handles it  
+✅ **Pseudo-classes visible** - If user hovers/interacts before capture  
+✅ **Media queries resolved** - At capture viewport  
+✅ **Simple extension** - Just capture, no intelligence  
+✅ **Reprocessable** - Can re-match without re-capture  
+✅ **User controls flow** - Explicit element selection  
+
+---
+
+## Key Differences from Original Part 2 Plan
+
+| Original | Simplified |
+|----------|-----------|
+| Build cascade resolver | Use browser cascade |
+| Parse HTML in backend | Extension captures DOM |
+| Complex selector matching | Simple class-based matching |
+| 4 stages (8-11) | 2 stages (8-9) |
+| 2-3 weeks | 1-2 weeks |
+
+---
+
+## Timeline (Revised)
+
+```
+Week 1:    [══ Stage 1: DB ══]
+Week 2:                   [══ Stage 2: Scan ══]
+Week 3:                               [═ Stage 3 ═][═ Stage 4 ═]
+Week 4:                        [════ Stages 3,4,5 (parallel) ════]
+Week 5:                                              [═ Stage 5 ═][═ Stage 6 ═]
+Week 6:                                                    [═ Stage 6 ═][S7]
+                                                                      ↓
+Week 7:    [════════ Stage 8: Chrome Extension ════════]
+Week 8:                                   [════ Stage 9: Backend Matching ════]
+
+Part 1 Complete: End Week 6
+Part 2 Complete: End Week 8
+```
+
+---
+
+**Document Version:** 2.1 (Simplified Part 2)  
 **Last Updated:** October 29, 2025
