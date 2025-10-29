@@ -16,59 +16,50 @@ CREATE TABLE IF NOT EXISTS less_files (
   status file_status DEFAULT 'pending',
   checksum VARCHAR(64),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  parsed_at TIMESTAMP WITH TIME ZONE,
-  error_message TEXT
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Table: less_imports
--- Stores hierarchical relationships between LESS files
+-- Tracks hierarchical relationships between LESS files
 CREATE TABLE IF NOT EXISTS less_imports (
   id SERIAL PRIMARY KEY,
-  parent_file_id INTEGER NOT NULL,
-  child_file_id INTEGER,
+  parent_file_id INTEGER NOT NULL REFERENCES less_files(id) ON DELETE CASCADE,
+  child_file_id INTEGER REFERENCES less_files(id) ON DELETE SET NULL,
   import_path TEXT NOT NULL,
   import_type import_type DEFAULT 'standard',
-  import_line_number INTEGER,
-  is_resolved BOOLEAN DEFAULT FALSE,
-  resolution_error TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_parent_file FOREIGN KEY (parent_file_id) REFERENCES less_files(id) ON DELETE CASCADE,
-  CONSTRAINT fk_child_file FOREIGN KEY (child_file_id) REFERENCES less_files(id) ON DELETE SET NULL
-);
-
--- Table: less_variables
--- Stores variables and mixins extracted from LESS files
-CREATE TABLE IF NOT EXISTS less_variables (
-  id SERIAL PRIMARY KEY,
-  less_file_id INTEGER NOT NULL,
-  variable_name VARCHAR(255) NOT NULL,
-  variable_type VARCHAR(50),
-  variable_value TEXT,
-  is_mixin BOOLEAN DEFAULT FALSE,
-  mixin_params TEXT,
-  line_number INTEGER,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_less_file FOREIGN KEY (less_file_id) REFERENCES less_files(id) ON DELETE CASCADE
-);
-
--- Table: tailwind_exports
--- Stores exported Tailwind CSS configurations and output
-CREATE TABLE IF NOT EXISTS tailwind_exports (
-  id SERIAL PRIMARY KEY,
-  export_name VARCHAR(255) NOT NULL,
-  export_type VARCHAR(50) NOT NULL,
-  tailwind_config JSONB,
-  css_output TEXT,
-  source_file_ids INTEGER[] DEFAULT ARRAY[]::INTEGER[],
-  export_path TEXT,
+  is_resolved BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Table: parse_history
--- Tracks parsing jobs and their outcomes
-CREATE TABLE IF NOT EXISTS parse_history (
+-- Table: less_variables
+-- Stores extracted variables and mixins
+CREATE TABLE IF NOT EXISTS less_variables (
+  id SERIAL PRIMARY KEY,
+  less_file_id INTEGER NOT NULL REFERENCES less_files(id) ON DELETE CASCADE,
+  variable_name VARCHAR(255) NOT NULL,
+  variable_value TEXT NOT NULL,
+  is_mixin BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(less_file_id, variable_name)
+);
+
+-- Table: tailwind_exports
+-- Stores exported Tailwind configurations and CSS outputs
+CREATE TABLE IF NOT EXISTS tailwind_exports (
+  id SERIAL PRIMARY KEY,
+  export_name VARCHAR(255) NOT NULL UNIQUE,
+  export_type VARCHAR(50) NOT NULL,
+  export_data TEXT NOT NULL,
+  status VARCHAR(50) DEFAULT 'pending',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table: processing_logs
+-- Tracks processing runs and statistics
+CREATE TABLE IF NOT EXISTS processing_logs (
   id SERIAL PRIMARY KEY,
   start_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   end_time TIMESTAMP WITH TIME ZONE,
@@ -101,6 +92,18 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER less_files_update_timestamp
   BEFORE UPDATE ON less_files
+  FOR EACH ROW
+  EXECUTE FUNCTION update_timestamp();
+
+-- Create updated_at trigger for less_imports
+CREATE TRIGGER less_imports_update_timestamp
+  BEFORE UPDATE ON less_imports
+  FOR EACH ROW
+  EXECUTE FUNCTION update_timestamp();
+
+-- Create updated_at trigger for less_variables
+CREATE TRIGGER less_variables_update_timestamp
+  BEFORE UPDATE ON less_variables
   FOR EACH ROW
   EXECUTE FUNCTION update_timestamp();
 
