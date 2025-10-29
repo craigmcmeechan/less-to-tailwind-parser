@@ -1,0 +1,40 @@
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-postgres"
+      ],
+      "env": {
+        "DATABASE_URL": "postgresql://dev:devpassword@postgres:5432/less_to_tailwind"
+      },
+      "disabled": false
+    },
+    "git": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-git",
+        "/workspace"
+      ],
+      "disabled": false
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-filesystem",
+        "/workspace"
+      ],
+      "env": {
+        "ALLOWED_PATHS": "/workspace"
+      },
+      "disabled": false
+    },
+    "sequentialthinking": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-sequentialthinking"
+      ],
+      "disabled": false
+    }
+  }
+}
