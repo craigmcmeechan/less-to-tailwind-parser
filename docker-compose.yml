@@ -1,138 +1,188 @@
 version: '3.9'
 
 services:
-  # Main development environment
-  dev:
+  # Main application with MCPs
+  app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: less-to-tailwind-parser-dev
+    container_name: less-to-tailwind-parser
+    hostname: less-to-tailwind
     
-    # Keep container running
-    stdin_open: true
-    tty: true
-    
-    # Mount volumes
+    # Volumes for workspace and data persistence
     volumes:
-      # Project root - all code
-      - .:/workspace
-      
-      # Node modules cache (prevent reinstall)
+      # Main workspace - writable
+      - ./:/workspace
+      # Node modules - named volume to avoid sync issues
       - node_modules:/workspace/node_modules
-      
-      # Global npm cache
-      - npm-cache:/root/.npm
-      
-      # Git config
-      - ~/.gitconfig:/root/.gitconfig:ro
-      - ~/.ssh:/root/.ssh:ro
-      
-      # Stage worktrees (for isolated stage work)
-      - ./stages/1:/workspace/stages/1
-      - ./stages/2:/workspace/stages/2
-      - ./stages/3:/workspace/stages/3
-      - ./stages/4:/workspace/stages/4
-      - ./stages/5:/workspace/stages/5
-      - ./stages/6:/workspace/stages/6
-      - ./stages/7:/workspace/stages/7
-      - ./stages/8:/workspace/stages/8
-      - ./stages/9:/workspace/stages/9
-      
-      # Bash history
-      - dev-bash-history:/root/.bash_history
+      # PostgreSQL data
+      - postgres_data:/var/lib/postgresql/data
+      # MCP configuration and logs
+      - mcp_config:/root/.mcp
+      - mcp_logs:/var/log/mcp
     
-    # Environment
+    # Environment variables
     environment:
-      - NODE_ENV=development
-      - PATH=/workspace/node_modules/.bin:$PATH
-      - COMPOSE_PROJECT_NAME=less-to-tailwind-parser
+      # Node
+      NODE_ENV: production
+      NODE_OPTIONS: --max-old-space-size=2048
+      
+      # Database
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: less_to_tailwind
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+      DATABASE_URL: postgresql://postgres:${DATABASE_PASSWORD:-postgres}@postgres:5432/less_to_tailwind
+      
+      # MCP Configuration
+      MCP_CONFIG_PATH: /root/.mcp-config.json
+      MCP_SERVER_PORT: 9000
+      MCP_LOG_LEVEL: debug
+      
+      # Filesystem MCP - workspace access
+      MCP_FILESYSTEM_ROOTS: /workspace
+      MCP_FILESYSTEM_ALLOWED_PATHS: /workspace
+      
+      # Git MCP - repository access
+      MCP_GIT_REPOS: /workspace
+      
+      # PostgreSQL MCP - connection
+      MCP_POSTGRES_HOST: postgres
+      MCP_POSTGRES_PORT: 5432
+      MCP_POSTGRES_DATABASE: less_to_tailwind
+      MCP_POSTGRES_USER: postgres
+      MCP_POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+      
+      # Sequential Thinking
+      ENABLE_THINKING: "true"
+      THINKING_BUDGET: "10000"
+      
+      # Claude API
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     
-    # Port mappings (for future API server)
+    # Port mappings
     ports:
-      - "3000:3000"  # API server
-      - "5432:5432"  # PostgreSQL
+      # Main application
+      - "3000:3000"
+      # MCP servers
+      - "9000:9000"   # Filesystem MCP
+      - "9001:9001"   # PostgreSQL MCP
+      - "9002:9002"   # Git MCP
+      - "9003:9003"   # Sequential Thinking
+    
+    # Networking
+    networks:
+      - less-to-tailwind-network
     
     # Resource limits
     deploy:
       resources:
         limits:
           cpus: '2'
-          memory: 4G
+          memory: 2G
         reservations:
           cpus: '1'
-          memory: 2G
+          memory: 1G
     
     # Restart policy
     restart: unless-stopped
     
     # Health check
     healthcheck:
-      test: ["CMD", "npm", "run", "build"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 40s
+    
+    # Dependencies
+    depends_on:
+      postgres:
+        condition: service_healthy
+    
+    # Additional settings
+    stdin_open: true
+    tty: true
 
-  # PostgreSQL database for development
+  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
-    container_name: less-to-tailwind-parser-postgres
+    container_name: less-to-tailwind-postgres
+    hostname: postgres
     
-    environment:
-      - POSTGRES_USER=dev
-      - POSTGRES_PASSWORD=devpassword
-      - POSTGRES_DB=less_to_tailwind
-    
+    # Volumes
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
     
+    # Environment
+    environment:
+      POSTGRES_DB: less_to_tailwind
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C
+    
+    # Ports
     ports:
       - "5432:5432"
     
+    # Networking
+    networks:
+      - less-to-tailwind-network
+    
+    # Health check
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dev"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
     
+    # Restart policy
     restart: unless-stopped
 
-  # Redis cache (optional, for future caching)
+  # Optional: Redis cache for future use
   redis:
     image: redis:7-alpine
-    container_name: less-to-tailwind-parser-redis
+    container_name: less-to-tailwind-redis
+    hostname: redis
     
-    command: redis-server --appendonly yes
-    
+    # Volumes
     volumes:
-      - redis-data:/data
+      - redis_data:/data
     
+    # Ports
     ports:
       - "6379:6379"
     
+    # Networking
+    networks:
+      - less-to-tailwind-network
+    
+    # Health check
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
     
+    # Restart policy
     restart: unless-stopped
 
-# Named volumes for persistence and caching
+# Named volumes
 volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
   node_modules:
     driver: local
-  npm-cache:
+  mcp_config:
     driver: local
-  postgres-data:
-    driver: local
-  redis-data:
-    driver: local
-  dev-bash-history:
+  mcp_logs:
     driver: local
 
-# Network for service communication
+# Networks
 networks:
-  default:
-    name: less-to-tailwind-parser-network
+  less-to-tailwind-network:
     driver: bridge
